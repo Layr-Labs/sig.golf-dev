@@ -188,7 +188,8 @@ theorem Glob_frame {gk : List (Reg × Word)} {wl pk : List Byte} {s t : MachineS
 /-! ## Heads -/
 
 def headCost (lay i : Nat) : Nat :=
-  6 + (if hasPrep i then 3 else 0) + (if hasPrep i && hasLui lay i then 1 else 0)
+  (if useKnownIndex i then 5 else 6) + (if hasPrep i then 3 else 0) +
+    (if hasPrep i && hasLui lay i then 1 else 0)
 
 theorem PRes.toState_pc_some (r : PRes) (s : MachineState) (e : E) (h : r.spc = some e) :
     (r.toState s).pc = e.eval s := by
