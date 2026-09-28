@@ -10,11 +10,11 @@ import SigGolfCandidate.Packed.TermCore
 Five 22-bit WOTS counters are packed in 14 bytes. The unchanged body is
 6384 bytes; the resulting signature is 6398 bytes. The witness is 6404
 bytes and the cache is 131072 bytes. The accepted-path verifier has
-11504 concrete RV64 cycles; the organizer charges 26 witness cycles.
+11498 concrete RV64 cycles; the organizer charges 26 witness cycles.
 
 The packed legacy certificate proves admission, all-input termination,
 all-message per-seed completeness, honest compression budgets, 127-bit
-adaptive unforgeability, and the 11530 accepting-cycle bound. The codec
+adaptive unforgeability, and the 11524 accepting-cycle bound. The codec
 proves an exact left inverse on every packed string and exact honest
 round-trip, including the signing oracle trace.
 -/
@@ -57,7 +57,7 @@ theorem signTerminationPacked :
   have hs := Sign.sign_terminates_packed hash sk cache m
   exact ⟨hs.1, lt_of_le_of_lt hs.2 Sign.signW_post_lt⟩
 
-theorem certificate_packed : Certificate concrete 11530 where
+theorem certificate_packed : Certificate concrete 11524 where
   admissible := admissible_packed
   termination := terminates_packed signTerminationPacked
   completeness := complete_packed signRefinementPacked
@@ -89,7 +89,7 @@ theorem layout_offsets : submission.layout =
   { message := 64, secretKey := 128, publicKey := 160,
     cache := 17568, signature := 9808, witness := 2048 } := rfl
 
-theorem certificate : SigGolf.Certificate submission 11530 := by
+theorem certificate : SigGolf.Certificate submission 11524 := by
   have old := SigGolfCandidate.Packed.certificate_packed
   exact {
     admission := SigGolfCandidate.Transport.admission _ old.admissible

@@ -87,9 +87,9 @@ theorem writeWords_regs : ∀ (ws : List Word) (s : MachineState) (base : Word),
 def M1w : Word := 0x71c71c71c71c71c7#64
 def M2w : Word := 0xf03f03f03f03f03f#64
 
-/-- Registers constant in all phases after the prologue. -/
+/-- Address bases also supply chain indices 7 and 8 through their low bytes. -/
 def baseK : List (Reg × Word) :=
-  [(.x5, 0), (.x18, 0x1000), (.x19, 0x2000), (.x6, 1), (.x7, 2), (.x8, 3), (.x9, 4), (.x13, 5)]
+  [(.x5, 0), (.x18, 0xF07), (.x19, 0x1F08), (.x6, 1), (.x7, 2), (.x8, 3), (.x9, 4), (.x13, 5)]
 
 /-- FORS phase: also `K16`. -/
 def gkF : List (Reg × Word) := baseK ++ [(.x24, 0x10000)]
