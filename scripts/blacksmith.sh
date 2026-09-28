@@ -68,7 +68,7 @@ CLOUD
   cache)
     mkdir -p .cache
     # Export before any candidate code runs; only trusted dependency/build trees.
-    guest 'sudo tar --zstd -C /srv -cf - sig/.elan sig-benchmark/.contract/.lake sig-benchmark/.contract/verifier/.tools' > .cache/trusted.tar.zst
+    guest 'sudo tar --zstd -C /srv -cf - sig/.elan sig-benchmark/.lake sig-benchmark/verifier/.tools' > .cache/trusted.tar.zst
     ;;
   run)
     # shellcheck disable=SC2016 # Resolve the judge UID inside the guest.
