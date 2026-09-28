@@ -185,11 +185,9 @@ theorem maskD0_eval (s : MachineState) (D : E) (W : Word) (hD : D.eval s = W) :
   omega
 
 theorem setup_C0 (lay : Nat) (s : MachineState) :
-    memEval s (setupMem lay) (BitVec.ofNat 64 192) =
-      (E.bin (.st .b 5) (stW0 192 (cw (hWord lay))) (cw 0)).eval s := by
+    memEval s (setupMem lay) (BitVec.ofNat 64 192) = (cw (hWord lay)).eval s := by
   unfold setupMem; split <;>
-    simp only [List.cons_append, List.nil_append] <;>
-    (repeat rw [memEval_cons_ne _ _ _ _ _ (by bvne)]) <;> rw [memEval_cons_eq _ _ _ _ _ rfl]
+    simp only [List.cons_append, List.nil_append] <;> rw [memEval_cons_eq _ _ _ _ _ rfl]
 
 theorem setup_C8 (lay : Nat) (s : MachineState) :
     memEval s (setupMem lay) (BitVec.ofNat 64 200) = (E.reg .x31).eval s := by
@@ -213,21 +211,11 @@ theorem setup_fr (lay : Nat) (s : MachineState) (h : lay ≠ 4) (A : Nat) (hA : 
   rw [memEval_cons_ne _ _ _ _ _ (by bvne), memEval_cons_ne _ _ _ _ _ (by bvne)]; rfl
 
 theorem setup_word (lay : Nat) (hlay : lay < 5) (s : MachineState)
-    (h48 : (s.getMem (BitVec.ofNat 64 0xC0)).toNat / 2 ^ 48 = 0) :
-    ((E.bin (.st .b 5) (stW0 192 (cw (hWord lay))) (cw 0)).eval s).toNat =
-      hWord lay + 2 ^ 32 * ((s.getMem (BitVec.ofNat 64 0xC0)).toNat / 2 ^ 32 % 256) := by
-  show (StoreKind.merge .b (StoreKind.merge .w (s.getMem (BitVec.ofNat 64 192)) 0 (BitVec.ofNat 64 (hWord lay)))
-    5 (BitVec.ofNat 64 0)).toNat = _
-  simp only [StoreKind.merge]
-  rw [replaceByte_toNat _ _ (by omega)]
-  have := merge_w0_toNat (s.getMem (BitVec.ofNat 64 192)) (BitVec.ofNat 64 (hWord lay))
-  simp only [StoreKind.merge, show (0 : Nat) / 4 = 0 from rfl] at this
-  rw [this]
-  have hw := hWord_lt lay hlay
-  simp only [BitVec.toNat_ofNat, BitVec.truncate_eq_setWidth, BitVec.toNat_setWidth] at h48 ⊢
-  generalize (s.getMem (BitVec.ofNat 64 192)).toNat = w at *
-  norm_num at hw h48 ⊢
-  omega
+    (_h48 : (s.getMem (BitVec.ofNat 64 0xC0)).toNat / 2 ^ 48 = 0) :
+    ((cw (hWord lay)).eval s).toNat = hWord lay := by
+  simp only [cw, E.eval, BitVec.toNat_ofNat]
+  have h := hWord_lt lay hlay
+  exact Nat.mod_eq_of_lt (by omega : hWord lay < 2 ^ 64)
 
 theorem encpost_step (L : LCtx) (hL : L.ok) (t : Nat) (ht : t < 2) (a : BitVec 256) (s : MachineState)
     (hs : EncOut L t a s) :
