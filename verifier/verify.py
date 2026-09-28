@@ -196,7 +196,7 @@ def read_images(folder: Path) -> dict[str, dict[str, int | str]]:
 def extract_images(args: argparse.Namespace, project: Path, env: dict[str, str], work: Path) -> dict:
     """Evaluate the verified submission's four images inside the sandbox and digest them."""
     shutil.copy2(args.trusted / 'verifier' / 'Extract.lean', project / 'Extract.lean')
-    command = ['lake', 'lean', 'Extract.lean']
+    command = ['lake', 'env', 'lean', 'Extract.lean']
     clean_env = {'PATH': f'{Path.home() / ".elan/bin"}:{os.environ.get("PATH", "/usr/bin:/bin")}',
                  'HOME': str(Path.home()), 'LANG': 'C.UTF-8',
                  'COMPARATOR_LANDRUN': env['COMPARATOR_LANDRUN'],

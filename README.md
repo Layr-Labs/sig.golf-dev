@@ -12,9 +12,12 @@ Lean statements a certificate proves, `verifier/` checks a submission, and `lake
 repository commit. The bot under `service/` and the website under `site/` are the upstream
 sig.golf deployment and are not used by Yukon.
 
-`BASELINE.json` records the provenance of the original starting proof, verified under an
-earlier contract; it and the current `submission/` predate this contract and are not
-verified under it.
+The proposed baseline is the **6,404 bytes × 11,573 cycles = 74,113,492** SPHINCS+
+variant from [upstream PR #34](https://github.com/leanEthereum/sig.golf-submissions/pull/34),
+using its [PR #35 cache-size port](https://github.com/leanEthereum/sig.golf-submissions/pull/35)
+with a 131,072-byte cache. `BASELINE.json` records the exact source revision. Upstream
+accepted it under an earlier contract; this repository's vendored contract requires
+fresh verification.
 
 ## Develop and submit
 
