@@ -12,9 +12,9 @@ last fold hash of layer `lay + 1`. -/
 def rootsStart (t : Nat) : Nat := lvlPc 1 t 60 9 + 7
 def preStart (lay t : Nat) : Nat :=
   if lay = 4 then rootsStart t + 6 else lvlPc (5 - lay) t 0 (heightL (lay + 1) - 1) + 7
-def stepsA (lay : Nat) : Nat := if lay = 4 then 26 else if lay = 0 then 15 else 14
-/-- Layer 4 skips two instruction slots, so its executed steps differ from its PC span. -/
-def encPc (lay t : Nat) : Nat := preStart lay t + (if lay = 4 then 28 else stepsA lay)
+def stepsA (lay : Nat) : Nat := if lay = 4 then 25 else if lay = 0 then 15 else 14
+/-- The layer-4 setup and encoding block is compacted through its terminal JALR. -/
+def encPc (lay t : Nat) : Nat := preStart lay t + stepsA lay
 
 /-- Known registers at the precode start. -/
 def a6K : List (Reg × Word) := gkF ++ [(.x10, 544), (.x11, 256), (.x12, 0x120)]

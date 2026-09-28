@@ -1,62 +1,96 @@
 import SigGolf
-import SigGolfCandidate.Packed.Radix27Sign
-import SigGolfCandidate.Packed.Radix27Final
 import SigGolfCandidate.Transport.SecurityFinal
+import SigGolfCandidate.Packed.CompleteCore
+import SigGolfCandidate.Packed.BudgetBridge
+import SigGolfCandidate.Packed.TermCore
 
 /-!
-# sig.golf: 13-byte radix-27 counter trailer
+# sig.golf: packed five-counter stateless hash-based signature
 
-The five low 16-bit counters occupy ten bytes. Their bounded high parts are
-ranked in base 27 and stored in three bytes. The 6384-byte signature body
-therefore gives a 6397-byte signature. The witness remains 6404 bytes.
+Five 22-bit WOTS counters are packed in 14 bytes. The unchanged body is
+6384 bytes; the resulting signature is 6398 bytes. The witness is 6404
+bytes and the cache is 131072 bytes. The accepted-path verifier has
+11497 concrete RV64 cycles; the organizer charges 26 witness cycles.
 
-The certificate covers the codec, every signer and expander RISC-V branch,
-all-message completeness, adaptive security, honest compression budgets,
-all-input termination, and the 11530-cycle accepting verification bound.
+The packed legacy certificate proves admission, all-input termination,
+all-message per-seed completeness, honest compression budgets, 127-bit
+adaptive unforgeability, and the 11523 accepting-cycle bound. The codec
+proves an exact left inverse on every packed string and exact honest
+round-trip, including the signing oracle trace.
 -/
 
-namespace SigGolfCandidate.Radix27Final
-open SigGolfCandidate SigGolfCandidate.Legacy OracleComp
+namespace SigGolfCandidate.Packed
+open SigGolfCandidate.Legacy OracleComp OracleSpec
 set_option maxRecDepth 200000
-set_option maxHeartbeats 3000000
+set_option maxHeartbeats 1000000
 set_option allowUnsafeReducibility true in
 attribute [local reducible] SigGolfCandidate.Legacy.Input SigGolfCandidate.Legacy.Output
-  Radix27Submission.concrete
+  SigGolfCandidate.Packed.submission SigGolfCandidate.Packed.ExpandMain.concrete
 
-theorem signRefinement13 : Radix27CompleteCore.SignRefinement13 := by
+private abbrev concrete := ExpandMain.concrete
+
+theorem admissible_packed : concrete.Admissible := by
+  refine ⟨?_, ?_⟩
+  · change sizes.Valid
+    unfold Sizes.Valid
+    decide
+  · intro phase
+    cases phase with
+    | keygen => exact packed_keygen_valid
+    | sign => exact Images.sign_valid
+    | expand => exact Images.expand_valid
+    | verify => exact packed_verify_valid
+
+theorem signRefinementPacked : SignRefinementStatement := by
   intro sk cache m
-  exact SigGolfCandidate.Radix27Sign.sign_refines13_concrete sk cache m
+  change (fun r => (r.value, r.hashCalls, r.hashCompressions)) <$>
+      Sign.submission.run .sign (sk, cache, m) =
+    (fun p => (p.1.map packOldAny, p.2.1, p.2.2)) <$>
+      Sign.countBoth (Ref.signRef sk cache m)
+  exact Sign.sign_refines_packed sk cache m
 
-theorem signTermination13 :
+theorem signTerminationPacked :
     ∀ (hash : Hash) (sk : SecretKey) (cache : Cache) (m : Message),
-      (Radix27Submission.concrete.runWith hash .sign (sk, cache, m)).finished = true ∧
-        (Radix27Submission.concrete.runWith hash .sign (sk, cache, m)).cycles < CYCLE_LIMIT := by
+      (concrete.runWith hash .sign (sk, cache, m)).finished = true ∧
+        (concrete.runWith hash .sign (sk, cache, m)).cycles < CYCLE_LIMIT := by
   intro hash sk cache m
-  have hs := SigGolfCandidate.Radix27Sign.sign_terminates13_concrete hash sk cache m
-  exact ⟨hs.1, lt_of_le_of_lt hs.2 SigGolfCandidate.Radix27Sign.signW_post_lt⟩
+  have hs := Sign.sign_terminates_packed hash sk cache m
+  exact ⟨hs.1, lt_of_le_of_lt hs.2 Sign.signW_post_lt⟩
 
-theorem certificate13 : SigGolfCandidate.Legacy.Certificate Radix27Submission.concrete 11530 :=
-  Radix27FinalCert.certificate_of_sign signRefinement13 signTermination13
+theorem certificate_packed : Certificate concrete 11523 where
+  admissible := admissible_packed
+  termination := terminates_packed signTerminationPacked
+  completeness := complete_packed signRefinementPacked
+    Final.keygenRefinement Final.signRefinement Final.verifyRefinement
+  compressionBounds := budget_packed Final.keygenRefinement
+  security := packed_secure
+  verificationBound := verificationBound_packed
 
-#print axioms certificate13
-end SigGolfCandidate.Radix27Final
+#print axioms admissible_packed
+#print axioms signRefinementPacked
+#print axioms signTerminationPacked
+#print axioms certificate_packed
+end SigGolfCandidate.Packed
 
 namespace SigGolf.Challenge
 
-private abbrev concrete := Radix27Submission.concrete
+private abbrev concrete := SigGolfCandidate.Packed.ExpandMain.concrete
 
 def submission : SigGolf.Submission :=
   SigGolfCandidate.Transport.submission concrete
 
-theorem signature_bytes : submission.sizes.signature = 6397 := rfl
+theorem signature_bytes : submission.sizes.signature = 6398 := rfl
+
 theorem witness_bytes : submission.sizes.witness = 6404 := rfl
+
 theorem cache_bytes : submission.sizes.cache = 131072 := rfl
+
 theorem layout_offsets : submission.layout =
   { message := 64, secretKey := 128, publicKey := 160,
     cache := 17568, signature := 9808, witness := 2048 } := rfl
 
-theorem certificate : SigGolf.Certificate submission 11530 := by
-  have old := SigGolfCandidate.Radix27Final.certificate13
+theorem certificate : SigGolf.Certificate submission 11523 := by
+  have old := SigGolfCandidate.Packed.certificate_packed
   exact {
     admission := SigGolfCandidate.Transport.admission _ old.admissible
     completeness := SigGolfCandidate.Transport.completeness _ old.admissible old.completeness
