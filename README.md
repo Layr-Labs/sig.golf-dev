@@ -1,28 +1,28 @@
 # sig.golf on Yukon
 
-Optimize a stateless hash-based signature scheme under the pinned
-[beta rules](https://github.com/leanEthereum/sig.golf-dev/blob/05c5af7a7020e5104eb37b420dc87139f37f0e4b/README.md).
+Optimize a stateless hash-based signature scheme under the [beta rules](RULES.md).
 The single `full` track minimizes **signature bytes × RISC-V verification cycles**.
-Yukon promotions are manual. The repository name `ots.golf` is historical; this
-checkout contains the sig.golf beta benchmark.
+Yukon promotions are manual.
 
-## Baseline and contract
+## Contract
 
-The starting proof comes from [upstream PR #19](https://github.com/leanEthereum/sig.golf-submissions/pull/19),
-commit `7fdbf04354520ade6ea451d7f36871011bd4e144`. Its published verification used
-contract `05c5af7a7020e5104eb37b420dc87139f37f0e4b`, which is the `.contract` submodule pin.
-The recorded result is **119,632 bytes × 5,617,758 cycles = 672,063,625,056**.
-`BASELINE.json` records the source and verification provenance. All admitted proof files
-are copied unchanged; upstream presentation files are excluded by the source policy.
-This is an upstream verification record, not a successful run of this Yukon workflow.
+The contract lives in this repository: `RULES.md` states the rules, `SigGolf/` holds the
+Lean statements a certificate proves, `verifier/` checks a submission, and `lakefile.lean`,
+`lake-manifest.json`, and `lean-toolchain` pin the Lean project. The contract commit is the
+repository commit. The bot under `service/` and the website under `site/` are the upstream
+sig.golf deployment and are not used by Yukon.
+
+`BASELINE.json` records the provenance of the original starting proof, verified under an
+earlier contract; it and the current `submission/` predate this contract and are not
+verified under it.
 
 ## Develop and submit
 
 Only `submission/` is editable: `claim.json`, `Solution.lean` and the
-`SigGolfCandidate/` Lean modules. The pinned verifier checks source policy,
-claim matching, permitted axioms and the certificate. Read the pinned beta rules
-for the exact model and proof obligations; the old main-branch hash-work contract
-and its diagnostic flags do not apply here.
+`SigGolfCandidate/` Lean modules. The verifier checks source policy, claim matching,
+permitted axioms, and the certificate, then evaluates the four images and records their
+digests. Read `RULES.md` for the exact model and proof obligations and `site/llms.txt` for
+a guide to writing a submission.
 
 From the repository root on Linux:
 
@@ -52,7 +52,7 @@ user under `/srv`, with Landlock and the upstream systemd isolation checks intac
 The job allows five hours around the verifier's four-hour, 24 GiB limit. The VM is stopped
 on success or failure, and verifier logs and the guest console are retained as artifacts.
 
-The guest's elan/toolchains, complete `.contract/.lake` dependency/build workspaces and
+The guest's elan/toolchains, the complete `.lake` dependency/build workspace and
 verifier tools are cached together by contract commit and bootstrap-script hashes.
 Only the default branch saves shared caches, before candidate verification. Candidate
 outputs and scores are never cached. Restored tools still run the upstream setup checks.
@@ -62,4 +62,4 @@ publisher on this repository. `records.json` is not updated by Yukon.
 
 ## License
 
-See `LICENSE` and the pinned contract's `THIRD_PARTY_NOTICES.md` for upstream licensing.
+See `LICENSE` and `THIRD_PARTY_NOTICES.md`.

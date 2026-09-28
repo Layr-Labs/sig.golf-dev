@@ -13,16 +13,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-          submodules: recursive
-      - name: Identify contract
-        id: host
-        run: |
-          echo "contract=$(git -C .contract rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         id: cache
         with:
           path: .cache/trusted.tar.zst
-          key: verifier-ubuntu26-vm-${{ runner.arch }}-${{ steps.host.outputs.contract }}-${{ hashFiles('scripts/setup.sh', 'scripts/blacksmith.sh', 'scripts/vm-setup.sh') }}-v1
+          key: verifier-ubuntu26-vm-${{ runner.arch }}-${{ hashFiles('SigGolf/**', 'SigGolf.lean', 'lakefile.lean', 'lake-manifest.json', 'lean-toolchain', 'verifier/**', 'scripts/setup.sh', 'scripts/blacksmith.sh', 'scripts/vm-setup.sh') }}-v2
       - name: Start verifier VM
         run: bash scripts/blacksmith.sh start
       - name: Setup
