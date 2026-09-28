@@ -8,7 +8,7 @@ namespace SigGolfCandidate.Verify
 open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
 
 /-- The cycle bound of the verify program (every run, honest or not). -/
-def cycleBound : Nat := 11498
+def cycleBound : Nat := 11504
 
 /-- A step bound (fuel) sufficient for every run. -/
 def fuelBound : Nat := 40100
@@ -76,11 +76,11 @@ theorem after_fors (d : DCtx) (hpk : d.pk.length = 16) (hwl : d.wl.length = 6404
   exact roots_good d roots _ _ _ (fun ans t ht => after_roots d.wl d.pk hpk hwl d.idx (d_idx_lt d) _ t ht) t ht
 
 theorem treesCost_val : treesCost 1 13 = 2497 := by decide
-theorem layersCost_val : layersCost 5 = 8718 := by decide
+theorem layersCost_val : layersCost 5 = 8728 := by decide
 
 theorem after_digest (d : DCtx) (hpk : d.pk.length = 16) (hwl : d.wl.length = 6404)
     (s : MachineState) (hs : DigestOut d s) :
-    Good s 40000 (8718 + 37 + 2497 + 169 + 8 + 32)
+    Good s 40000 (8728 + 37 + 2497 + 169 + 8 + 32)
       (cc (if (!admissible (d.A % 2 ^ 184)) = true then pure false else do
         let roots ← verifyFors d.wl (d.A % 2 ^ 184)
         let M ← hash16 (rootsInput (idxOf (d.A % 2 ^ 184)) roots)
@@ -116,7 +116,7 @@ theorem after_digest (d : DCtx) (hpk : d.pk.length = 16) (hwl : d.wl.length = 64
       (K := fun v => cc (foldPath (ftsNodeInput 0 d.idx) (d.u 0) v
       (witFtsPath d.wl 0)) Kr) (fmt_th _ _ _ _ _ _ (by decide)) hf h5 hv hin H
     rw [pad64_ftsLeafInput _ _ _ _ hsl, blocks_q] at h3
-    exact Good.steps' (N' := 40000) (C' := 8718 + 37 + 2497 + 169 + 8 + 32) hst h3 (by omega)
+    exact Good.steps' (N' := 40000) (C' := 8728 + 37 + 2497 + 169 + 8 + 32) hst h3 (by omega)
       (by rw [treesCost_val, layersCost_val])
 
 theorem main_good (ml pkl wl : List Byte) (hml : ml.length = 32) (hpk : pkl.length = 16)

@@ -125,9 +125,9 @@ theorem init_glob (ml pkl wl : List Byte) (s : MachineState) (hs : InitOK ml pkl
 
 theorem start_step (ml pkl wl : List Byte) (hml : ml.length = 32) (hwl : wl.length = 6404)
     (s : MachineState) (hs : InitOK ml pkl wl s) :
-    (countersOk wl = false → ∃ t, Steps image s 22 22 t ∧ fetch image t = some (.base .ECALL) ∧
+    (countersOk wl = false → ∃ t, Steps image s 18 18 t ∧ fetch image t = some (.base .ECALL) ∧
         t.getReg .x5 = 1 ∧ t.getReg .x10 = 1) ∧
-    (countersOk wl = true → ∃ t, Steps image s 29 29 t ∧ fetch image t = some (.base .ECALL) ∧
+    (countersOk wl = true → ∃ t, Steps image s 25 25 t ∧ fetch image t = some (.base .ECALL) ∧
         t.getReg .x5 = 0 ∧ hashArgumentsValid t = true ∧
         hashInput t = fmt (digestInput (witRho wl) ml) ∧
         ∀ a, DigestOut ⟨wl, pkl, a⟩ (writeHash t a)) := by

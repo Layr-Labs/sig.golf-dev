@@ -224,14 +224,13 @@ theorem head_step (c : CCtx) (hc : c.ok) (i : Nat) (hi1 : 1 ≤ i) (hi : i < 42)
   have hkeep' := keepB_ok hkeep s
   have hl := hc.1
   obtain ⟨ht4, ht1, htb, hB, -, -⟩ := tabOk_spec (tabOk_at c.lay i hl hi)
-  have hmem : r.st.mem = [(⟨none, BitVec.ofNat 64 0xC0⟩, stB 5 (cw (indexWord i)))] := by simp [hr, headExp]
+  have hmem : r.st.mem = [(⟨none, BitVec.ofNat 64 0xC0⟩, stB 5 (cw i))] := by simp [hr, headExp]
   have fr : ∀ A, A < 2 ^ 64 → A ≠ 0xC0 → (r.toState s).getMem (BitVec.ofNat 64 A) = s.getMem (BitVec.ofNat 64 A) := by
     intro A hA h1
     rw [PRes.toState_getMem, memEval_frame_ofNat _ _ _ hA (by rw [hmem]; simp; omega)]
   have m0 : ((r.toState s).getMem (BitVec.ofNat 64 0xC0)).toNat =
       (s.getMem (BitVec.ofNat 64 0xC0)).toNat % 2 ^ 40 + 2 ^ 40 * i := by
-    rw [PRes.toState_getMem, hmem, memEval_cons_eq _ _ _ _ _ rfl,
-      stB_toNat _ _ _ (by omega), indexWord_mod]
+    rw [PRes.toState_getMem, hmem, memEval_cons_eq _ _ _ _ _ rfl, stB_toNat _ _ _ (by omega)]
     have := hCB.2.2
     generalize (s.getMem (BitVec.ofNat 64 0xC0)).toNat = w at *
     norm_num at this ⊢

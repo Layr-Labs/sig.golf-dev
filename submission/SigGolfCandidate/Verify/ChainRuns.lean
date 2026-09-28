@@ -48,14 +48,8 @@ def chainAddr (lay i : Nat) : Nat := 0x800 + layBody lay + 16 * i
 /-- A byte store `sb v, off(CB)` into the chain tweak word at CB. -/
 def stB (off : Nat) (v : E) : E := .bin (.st .b off) (ldE 0xC0) v
 
-/-- Chain indices 1..8 are low bytes of globally constant registers. -/
-def useKnownIndex (i : Nat) : Bool := i ≠ 0 && i ≤ 8
-
-def indexWord (i : Nat) : Nat := if i = 7 then 0xF07 else if i = 8 then 0x1F08 else i
-
-theorem indexWord_mod (i : Nat) : indexWord i % 256 = i % 256 := by
-  unfold indexWord
-  split_ifs <;> simp_all
+/-- Chain indices 1..6 are held in globally constant registers. -/
+def useKnownIndex (i : Nat) : Bool := i ≠ 0 && i ≤ 6
 
 /-- Head of chain `i`: (lui) (prep) `ld; ld; [addi TP, i]; sb index, CB+5;
 addi a2, CB+48; jalr`, stopping at the symbolic target. -/
@@ -69,7 +63,7 @@ def headExp (lay i : Nat) : PRes :=
     (if hasPrep i && hasLui lay i then 1 else 0)
   ⟨⟨(((rf2.set .x1 (ldE wa)).set .x2 (ldE (wa + 8))).set .x4
       (if useKnownIndex i then .reg .x4 else cw i)).set .x12 (cw 0xF0),
-    [(⟨none, BitVec.ofNat 64 0xC0⟩, stB 5 (cw (indexWord i)))], []⟩, 0, false, n, n, [],
+    [(⟨none, BitVec.ofNat 64 0xC0⟩, stB 5 (cw i))], []⟩, 0, false, n, n, [],
     some (mkBin .and (mkAdd rcur (.c (BitVec.ofNat 64 (tabAddr lay i) - BitVec.ofNat 64 (bVal lay i))))
       (.c (~~~1#64)))⟩
 
