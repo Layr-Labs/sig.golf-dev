@@ -19,7 +19,7 @@ including its oracle-level hash counter and finite-computation adversary interfa
 
 namespace SigGolf.Challenge
 
-noncomputable def submission : SigGolf.Submission :=
+def submission : SigGolf.Submission :=
   SigGolfCandidate.Transport.submission SigGolfCandidate.submission
 
 theorem signature_bytes : submission.sizes.signature = 6404 := rfl
