@@ -46,7 +46,7 @@ theorem terminates_packed
       exact Final.verifyTermination hash m pk w
 
 
-theorem verificationBound_packed : concrete.VerificationBound 11537 := by
+theorem verificationBound_packed : concrete.VerificationBound 11530 := by
   intro hash sk m
   dsimp only
   intro h
@@ -55,8 +55,8 @@ theorem verificationBound_packed : concrete.VerificationBound 11537 := by
   rw [hcyc]
   have hb := (Verify.verify_terminates hash (m', pk, w)).2.1
   rw [verify_runWith_eq]
-  change (SigGolfCandidate.submission.runWith hash .verify (m', pk, w)).cycles + 26 ≤ 11537
-  change (SigGolfCandidate.submission.runWith hash .verify (m', pk, w)).cycles ≤ 11511 at hb
+  change (SigGolfCandidate.submission.runWith hash .verify (m', pk, w)).cycles + 26 ≤ 11530
+  change (SigGolfCandidate.submission.runWith hash .verify (m', pk, w)).cycles ≤ 11504 at hb
   omega
 
 

@@ -12,8 +12,9 @@ last fold hash of layer `lay + 1`. -/
 def rootsStart (t : Nat) : Nat := lvlPc 1 t 60 9 + 7
 def preStart (lay t : Nat) : Nat :=
   if lay = 4 then rootsStart t + 6 else lvlPc (5 - lay) t 0 (heightL (lay + 1) - 1) + 7
-def stepsA (lay : Nat) : Nat := if lay = 4 then 28 else if lay = 0 then 15 else 14
-def encPc (lay t : Nat) : Nat := preStart lay t + stepsA lay
+def stepsA (lay : Nat) : Nat := if lay = 4 then 26 else if lay = 0 then 15 else 14
+/-- Layer 4 skips two instruction slots, so its executed steps differ from its PC span. -/
+def encPc (lay t : Nat) : Nat := preStart lay t + (if lay = 4 then 28 else stepsA lay)
 
 /-- Known registers at the precode start. -/
 def a6K : List (Reg × Word) := gkF ++ [(.x10, 544), (.x11, 256), (.x12, 0x120)]
@@ -67,12 +68,12 @@ def maskD (i : Nat) (D : E) : E :=
 
 def rE0 (lay : Nat) : E := mkBin .add (maskD 0 d0E) (cw (bVal lay 0))
 
-def stepsB (lay : Nat) : Nat := if lay = 4 then 38 else 35
+def stepsB (lay : Nat) : Nat := if lay = 4 then 37 else 34
 
-/-- Chain setup: `sw H, CB; sd X31, CB+8` (layer 4 also zeroes CB+32..48, left by FORS), then
+/-- Chain setup: `sd H, CB; sd X31, CB+8` (layer 4 also zeroes CB+32..48, left by FORS), then
 chain 0's head writes byte 5 (`i = 0`). -/
 def setupMem (lay : Nat) : List (Addr × E) :=
-  [(⟨none, BitVec.ofNat 64 192⟩, .bin (.st .b 5) (stW0 192 (cw (hWord lay))) (cw 0))] ++
+  [(⟨none, BitVec.ofNat 64 192⟩, cw (hWord lay))] ++
   (if lay = 4 then [(⟨none, BitVec.ofNat 64 232⟩, .c 0), (⟨none, BitVec.ofNat 64 224⟩, .c 0)] else []) ++
   [(⟨none, BitVec.ofNat 64 200⟩, .reg .x31)]
 
