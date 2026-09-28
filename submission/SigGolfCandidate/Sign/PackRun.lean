@@ -8,7 +8,7 @@ import SigGolfCandidate.Sign.PackC5
 import SigGolfCandidate.Sign.PackC6
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv
 
 /-- The whole pack (instructions 675 .. 2797). -/
 theorem pack_run : PackStep 675 2798 0 491 2123 :=

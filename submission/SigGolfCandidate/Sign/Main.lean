@@ -12,7 +12,7 @@ set_option linter.unusedVariables false
 set_option linter.unnecessarySeqFocus false
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
 
 theorem decode_ecall : decodeInstruction 0x00000073#32 = some (.base .ECALL) := rfl
 
@@ -32,7 +32,7 @@ theorem code2800 : image.code[2800]? = some 0x00000073#32 := by decide +kernel
 end SigGolfCandidate.Sign
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
 
 theorem openAt_words (t : MachineState) (B : Nat) (o : Val × List Val) (h : OpenAt t B o) :
     t.readWords (BitVec.ofNat 64 B) 22 = wordsOf (o.1 ++ o.2.flatten) := by
@@ -94,7 +94,7 @@ theorem stage_bytes (t : MachineState) (l : Nat) (hl : l < 5) (ls : LayerSig) (h
 end SigGolfCandidate.Sign
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
 
 theorem flatMap_range_eq {β γ : Type} (xs : List β) (g : Nat → List γ) (f : β → List γ)
     (h : ∀ l (hl : l < xs.length), g l = f xs[l]) :
@@ -148,7 +148,7 @@ theorem final_bytes (t4 : MachineState) (rho : Val) (fors : List (Val × List Va
 end SigGolfCandidate.Sign
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
 
 theorem OpenAt.frame {s t : MachineState} {W : Nat → Prop} {B : Nat} {o : Val × List Val}
     (h : OpenAt s B o) (hf : Frame s t W) (hB : B + 176 + 16 < 2 ^ 64)
@@ -192,7 +192,7 @@ def ZA (a : Nat) : Prop :=
 end SigGolfCandidate.Sign
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
 
 /-- Cycle bound after the MAC check (digest search, dig_ok, FORS, roots, layers, pack, HALT prep). -/
 def restW : Nat :=
@@ -212,7 +212,7 @@ theorem signRest_sim (sk : SecretKey) (cache : Cache) (m : Message) (u : Machine
     (hu : MacOk sk cache m u) :
     Sim image u restW (signRest (toList sk) (toList cache) (toList m)) ListPost := by
   have hS : (toList sk).length = 32 := length_toList sk
-  have hcache : (toList cache).length = 131072 := by simp [toList, SigGolf.bytes]; rfl
+  have hcache : (toList cache).length = 131072 := by simp [toList, SigGolfCandidate.Legacy.bytes]; rfl
   have dmem := hu.mem
   have u5 := hu.x5
   have u7 := hu.x7
@@ -329,7 +329,7 @@ theorem signList_sim (sk : SecretKey) (cache : Cache) (m : Message) :
 end SigGolfCandidate.Sign
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
 
 /-- Final states: at a HALT whose output is `signRef`'s value. -/
 def SignPost (a : Option (Bytes 6404)) (t : MachineState) : Prop :=

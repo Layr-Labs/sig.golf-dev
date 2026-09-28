@@ -13,7 +13,7 @@ witness buffer is `expandRef σ`.
 namespace SigGolfCandidate.Expand
 
 set_option maxRecDepth 100000
-open RiscvZkvm.Rv64 SigGolf SigGolf.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem OracleComp
+open RiscvZkvm.Rv64 SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem OracleComp
 
 /-- The initial state of `expand` on `(m, pk, σ)`. -/
 def initState (m : Message) (pk : PublicKey) (σ : Bytes 6404) : MachineState :=
@@ -32,8 +32,8 @@ theorem initState_sig (m : Message) (pk : PublicKey) (σ : Bytes 6404) (j : Nat)
     (initState m pk σ).getByte (BitVec.ofNat 64 (0x2650 + j)) = (bytes σ).getD j 0 := by
   unfold initState
   simp only [getByte_setReg]
-  rw [getByte_writeBytesAsWords _ _ _ _ (by decide) (by simp [SigGolf.bytes]) (by omega),
-    if_pos (by simp [SigGolf.bytes]; omega)]
+  rw [getByte_writeBytesAsWords _ _ _ _ (by decide) (by simp [SigGolfCandidate.Legacy.bytes]) (by omega),
+    if_pos (by simp [SigGolfCandidate.Legacy.bytes]; omega)]
   congr 1; omega
 
 theorem readBuffer_final (m : Message) (pk : PublicKey) (σ : Bytes 6404) (u : MachineState)

@@ -1,5 +1,5 @@
 import SigGolfCandidate.Bridge.Basic
-import SigGolf.Security
+import SigGolfCandidate.Legacy.Security
 import SigGolfCandidate.SphincsSecurity.Statement
 
 /-!
@@ -47,35 +47,35 @@ def EventSecurity : Prop :=
       SphincsSecurity.Security.experiment adversary] ≤ (q : ℝ≥0∞) / 2 ^ 127
 
 /-- The abstract signing budget covers the organizer lifetime (both are `2^32`). -/
-theorem lifetime_le : SigGolf.LIFETIME ≤ SphincsSecurity.signatureLimit := le_of_eq rfl
+theorem lifetime_le : SigGolfCandidate.Legacy.LIFETIME ≤ SphincsSecurity.signatureLimit := le_of_eq rfl
 
 /-- Everything the bridge assumes about a submission. -/
-structure Assumptions (submission : SigGolf.Submission) where
+structure Assumptions (submission : SigGolfCandidate.Legacy.Submission) where
   /-- (A) abstract event-form security. -/
   security : EventSecurity
   /-- Organizer secret keys become abstract master seeds, with the right distribution. -/
-  seedOf : SigGolf.SecretKey → SphincsSecurity.MasterSeed
-  seedOf_dist : ∀ seed, Pr[= seed | seedOf <$> SigGolf.sampleSecretKey] =
+  seedOf : SigGolfCandidate.Legacy.SecretKey → SphincsSecurity.MasterSeed
+  seedOf_dist : ∀ seed, Pr[= seed | seedOf <$> SigGolfCandidate.Legacy.sampleSecretKey] =
     Pr[= seed | SphincsSecurity.sampleMasterSeed]
   /-- (B) messages. -/
-  msgOf : SigGolf.Message → SphincsSecurity.Message
+  msgOf : SigGolfCandidate.Legacy.Message → SphincsSecurity.Message
   msgOf_injective : Function.Injective msgOf
   /-- (B) signatures: an exact byte codec. -/
-  sigCodec : SigGolf.Bytes submission.sizes.signature ≃ SphincsSecurity.Signature
+  sigCodec : SigGolfCandidate.Legacy.Bytes submission.sizes.signature ≃ SphincsSecurity.Signature
   /-- (B) the expansion map and the witness decoder, with `witDec ∘ expandFn = sigCodec`. -/
-  expandFn : SigGolf.Bytes submission.sizes.signature → SigGolf.Bytes submission.sizes.witness
-  witDec : SigGolf.Bytes submission.sizes.witness → SphincsSecurity.Signature
+  expandFn : SigGolfCandidate.Legacy.Bytes submission.sizes.signature → SigGolfCandidate.Legacy.Bytes submission.sizes.witness
+  witDec : SigGolfCandidate.Legacy.Bytes submission.sizes.witness → SphincsSecurity.Signature
   witDec_expandFn : ∀ b, witDec (expandFn b) = sigCodec b
   /-- (B) public keys. -/
-  pkEnc : SphincsSecurity.PublicKey → SigGolf.PublicKey
+  pkEnc : SphincsSecurity.PublicKey → SigGolfCandidate.Legacy.PublicKey
   /-- (B) caches: `cacheEnc` gives the bytes key generation publishes, `cacheDec` the abstract
   cache the signer reads from arbitrary bytes. No law relating them is needed for security. -/
-  cacheEnc : SphincsSecurity.TopCache → SigGolf.Bytes submission.sizes.cache
-  cacheDec : SigGolf.Bytes submission.sizes.cache → SphincsSecurity.TopCache
+  cacheEnc : SphincsSecurity.TopCache → SigGolfCandidate.Legacy.Bytes submission.sizes.cache
+  cacheDec : SigGolfCandidate.Legacy.Bytes submission.sizes.cache → SphincsSecurity.TopCache
   /-- (C) oracle relabelling: `pad` maps abstract inputs to organizer queries, and is
   inverted by `unpad` on every organizer query and on every honest abstract input. -/
-  pad : List UInt8 → SigGolf.Query
-  unpad : SigGolf.Query → List UInt8
+  pad : List UInt8 → SigGolfCandidate.Legacy.Query
+  unpad : SigGolfCandidate.Legacy.Query → List UInt8
   Honest : List UInt8 → Prop
   pad_unpad : ∀ y, pad (unpad y) = y
   unpad_pad : ∀ x, Honest x → unpad (pad x) = x

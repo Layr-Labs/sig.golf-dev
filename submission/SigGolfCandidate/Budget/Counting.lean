@@ -15,7 +15,7 @@ For a uniform answer `u : BitVec 256`:
 -/
 
 namespace SigGolfCandidate.Budget
-open SigGolf SigGolfCandidate.Ref OracleComp Finset ENNReal
+open SigGolfCandidate.Legacy SigGolfCandidate.Ref OracleComp Finset ENNReal
 
 /-! ## Counting over ranges -/
 

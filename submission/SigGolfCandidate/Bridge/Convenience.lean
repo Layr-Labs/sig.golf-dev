@@ -9,7 +9,7 @@ import SigGolfCandidate.Bridge.Setup
   honest image are sent to the abstract oracle as `0 :: qEnc y`.
 -/
 
-open OracleSpec OracleComp SigGolf
+open OracleSpec OracleComp SigGolfCandidate.Legacy
 
 namespace SigGolfCandidate.Bridge
 
@@ -93,34 +93,34 @@ end zeroPad
 /-- `Assumptions` with the oracle relabelling (C) given in zero-padding form: `pad` is injective on
 honest inputs, every honest input starts with byte `1`, and `qEnc` is any injective byte
 encoding of organizer queries (e.g. `defaultQEnc`). -/
-structure ZeroPadAssumptions (sub : SigGolf.Submission) where
+structure ZeroPadAssumptions (sub : SigGolfCandidate.Legacy.Submission) where
   /-- (A) abstract event-form security. -/
   security : EventSecurity
   /-- Organizer secret keys become abstract master seeds, with the right distribution. -/
-  seedOf : SigGolf.SecretKey → SphincsSecurity.MasterSeed
-  seedOf_dist : ∀ seed, Pr[= seed | seedOf <$> SigGolf.sampleSecretKey] =
+  seedOf : SigGolfCandidate.Legacy.SecretKey → SphincsSecurity.MasterSeed
+  seedOf_dist : ∀ seed, Pr[= seed | seedOf <$> SigGolfCandidate.Legacy.sampleSecretKey] =
     Pr[= seed | SphincsSecurity.sampleMasterSeed]
   /-- (B) messages. -/
-  msgOf : SigGolf.Message → SphincsSecurity.Message
+  msgOf : SigGolfCandidate.Legacy.Message → SphincsSecurity.Message
   msgOf_injective : Function.Injective msgOf
   /-- (B) signatures: an exact byte codec. -/
-  sigCodec : SigGolf.Bytes sub.sizes.signature ≃ SphincsSecurity.Signature
+  sigCodec : SigGolfCandidate.Legacy.Bytes sub.sizes.signature ≃ SphincsSecurity.Signature
   /-- (B) the expansion map and the witness decoder, with `witDec ∘ expandFn = sigCodec`. -/
-  expandFn : SigGolf.Bytes sub.sizes.signature → SigGolf.Bytes sub.sizes.witness
-  witDec : SigGolf.Bytes sub.sizes.witness → SphincsSecurity.Signature
+  expandFn : SigGolfCandidate.Legacy.Bytes sub.sizes.signature → SigGolfCandidate.Legacy.Bytes sub.sizes.witness
+  witDec : SigGolfCandidate.Legacy.Bytes sub.sizes.witness → SphincsSecurity.Signature
   witDec_expandFn : ∀ b, witDec (expandFn b) = sigCodec b
   /-- (B) public keys. -/
-  pkEnc : SphincsSecurity.PublicKey → SigGolf.PublicKey
+  pkEnc : SphincsSecurity.PublicKey → SigGolfCandidate.Legacy.PublicKey
   /-- (B) caches: the bytes key generation publishes, and the abstract cache the signer reads from
   arbitrary bytes. -/
-  cacheEnc : SphincsSecurity.TopCache → SigGolf.Bytes sub.sizes.cache
-  cacheDec : SigGolf.Bytes sub.sizes.cache → SphincsSecurity.TopCache
+  cacheEnc : SphincsSecurity.TopCache → SigGolfCandidate.Legacy.Bytes sub.sizes.cache
+  cacheDec : SigGolfCandidate.Legacy.Bytes sub.sizes.cache → SphincsSecurity.TopCache
   /-- (C) zero padding, injective on honest inputs, which all start with byte `1`. -/
-  pad : List UInt8 → SigGolf.Query
+  pad : List UInt8 → SigGolfCandidate.Legacy.Query
   Honest : List UInt8 → Prop
   pad_injOn : Set.InjOn pad Honest
   honest_head : ∀ x, Honest x → x.head? = some 1
-  qEnc : SigGolf.Query → List UInt8
+  qEnc : SigGolfCandidate.Legacy.Query → List UInt8
   qEnc_injective : Function.Injective qEnc
   /-- (D) key generation. -/
   keygen_eq : ∀ sk, (fun r => (r.value, r.hashCalls)) <$> sub.run .keygen sk =
@@ -154,7 +154,7 @@ structure ZeroPadAssumptions (sub : SigGolf.Submission) where
 
 namespace ZeroPadAssumptions
 
-variable {sub : SigGolf.Submission} (Z : ZeroPadAssumptions sub)
+variable {sub : SigGolfCandidate.Legacy.Submission} (Z : ZeroPadAssumptions sub)
 
 lemma zpPad_eq {x : List UInt8} (hx : Z.Honest x) : zpPad Z.pad Z.Honest Z.qEnc x = Z.pad x := by
   simp [zpPad, hx]

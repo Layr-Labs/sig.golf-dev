@@ -5,7 +5,7 @@ import SigGolfCandidate.Verify.ForsSem
 set_option linter.unusedSimpArgs false
 
 namespace SigGolfCandidate.Verify
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
 
 theorem witFtsPath_eq (d : DCtx) (k : Nat) : witFtsPath d.wl k = (forsFC d k).path := by
   show (List.range 10).map (witFtsSib d.wl k) = (List.range 10).map fun l => slice d.wl (32 + 176 * k + 16 * l) 16

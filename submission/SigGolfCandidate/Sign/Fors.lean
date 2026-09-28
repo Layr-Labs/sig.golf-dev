@@ -12,7 +12,7 @@ set_option linter.unusedVariables false
 set_option linter.unnecessarySeqFocus false
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
 
 /-- `FW` register value. -/
 def fwVal (idx : Nat) : Nat := 0x801 + 2 ^ 24 * (idx / 2 ^ 32)
@@ -265,7 +265,7 @@ theorem fors_body (S : List Byte) (hS : S.length = 32) (idx N : Nat) (hidx : idx
 end SigGolfCandidate.Sign
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
 
 /-- Cycle bound of one FORS tree. -/
 abbrev forsTreeW : Nat := 8 + (512 * 70 + (2 + (10 * 13334 + 9)))

@@ -14,7 +14,7 @@ hash 4. (v5 values: leaf `21 + 294 + 11 = 326`, FORS tree `512·3 + 1023 = 2559`
 -/
 
 namespace SigGolfCandidate.Budget
-open SigGolf SigGolfCandidate.Ref OracleComp OracleSpec Finset
+open SigGolfCandidate.Legacy SigGolfCandidate.Ref OracleComp OracleSpec Finset
 
 /-! ## Loops -/
 

@@ -20,7 +20,7 @@ mapping (`Functor.map_map`).
 -/
 
 namespace SigGolfCandidate.Budget
-open SigGolf SigGolfCandidate.Ref OracleComp OracleSpec ENNReal OracleComp.EvalDist
+open SigGolfCandidate.Legacy SigGolfCandidate.Ref OracleComp OracleSpec ENNReal OracleComp.EvalDist
 
 /-! ## `honest`, split after each phase -/
 

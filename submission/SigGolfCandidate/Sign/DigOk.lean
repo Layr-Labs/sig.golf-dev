@@ -12,7 +12,7 @@ set_option linter.unusedVariables false
 set_option linter.unnecessarySeqFocus false
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
 
 /-- The `u_k` dwords as the machine computes them from the digest dwords. -/
 def ukList (w0 w1 w2 : Word) : List Word :=
@@ -49,7 +49,7 @@ theorem ukList_eq (A : Nat) (hA : A < 2 ^ 256) :
 end SigGolfCandidate.Sign
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
 
 def digokW (a : Nat) : Prop :=
   a = 0x2650 ∨ a = 0x2658 ∨ (0x710 ≤ a ∧ a < 0x780) ∨ a = 0x6A8 ∨ a = 0xC8 ∨ a = 0x1C8 ∨ a = 0x228 ∨

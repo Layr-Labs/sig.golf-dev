@@ -3,7 +3,7 @@ import SigGolfCandidate.Verify.LayerRuns
 /-! # Prologue, digest, FORS tree prefixes and the roots hash: partial specifications -/
 
 namespace SigGolfCandidate.Verify
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv
 
 /-- `u_k` from the digest words `w 0, w 1, w 2` (the generator's `u_extract`). -/
 def uExprW (w : Nat → E) (k : Nat) : E :=

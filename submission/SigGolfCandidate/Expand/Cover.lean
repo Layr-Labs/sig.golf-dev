@@ -8,7 +8,7 @@ kernel).
 -/
 
 namespace SigGolfCandidate.Expand
-open RiscvZkvm.Rv64 SigGolf SigGolf.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
+open RiscvZkvm.Rv64 SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
 
 theorem coverOk_of_lt (i : Nat) (hi : i < 6404) : coverOk i = true := by
   by_cases h1 : i < 2360

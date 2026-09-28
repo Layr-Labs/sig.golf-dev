@@ -12,7 +12,7 @@ keygen one taken as a hypothesis (no dependency on the Keygen build).
 -/
 
 namespace SigGolfCandidate.Budget
-open SigGolf SigGolfCandidate.Ref OracleComp
+open SigGolfCandidate.Legacy SigGolfCandidate.Ref OracleComp
 
 section
 variable (sub : Submission)

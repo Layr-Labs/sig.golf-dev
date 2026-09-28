@@ -1,4 +1,4 @@
-import SigGolf
+import SigGolfCandidate.Legacy
 import SigGolfCandidate.CacheBytes
 
 /-!
@@ -19,12 +19,12 @@ Byte-level primitives of the reference specification (`work/py-opt7/ref.py`,
   (`decodeDigits`).
 
 All values (secrets, chain values, nodes, roots, `rho`) are `Val = List Byte` of length 16.
-Byte `i` of a `Bytes n` (a `BitVec (8 n)`) is bits `8 i .. 8 i + 7` (as `SigGolf.bytes`), so
+Byte `i` of a `Bytes n` (a `BitVec (8 n)`) is bits `8 i .. 8 i + 7` (as `SigGolfCandidate.Legacy.bytes`), so
 all conversions are little endian, exactly like the RISC-V memory.
 -/
 
 namespace SigGolfCandidate.Ref
-open SigGolf OracleComp OracleSpec
+open SigGolfCandidate.Legacy OracleComp OracleSpec
 
 /-! ## Bytes -/
 
@@ -48,8 +48,8 @@ def leNat : List Byte → Nat
 /-- `0^k` (bytes). -/
 def zeros (k : Nat) : List Byte := List.replicate k 0
 
-/-- The bytes of a `Bytes n` value (`= SigGolf.bytes`, the loader's byte order). -/
-def toList {n : Nat} (x : Bytes n) : List Byte := SigGolf.bytes x
+/-- The bytes of a `Bytes n` value (`= SigGolfCandidate.Legacy.bytes`, the loader's byte order). -/
+def toList {n : Nat} (x : Bytes n) : List Byte := SigGolfCandidate.Legacy.bytes x
 
 /-- The `Bytes n` value of a byte list (little endian; extra bytes are dropped). -/
 def ofList (n : Nat) (l : List Byte) : Bytes n := BitVec.ofNat (8 * n) (leNat l)

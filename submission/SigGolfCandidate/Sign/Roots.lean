@@ -9,7 +9,7 @@ set_option linter.unusedVariables false
 set_option linter.unnecessarySeqFocus false
 
 namespace SigGolfCandidate.Sign
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
 
 /-- From `pc 191` (after the FORS trees): the roots hash `M`, then the layer loop entry. -/
 theorem roots_sim (S cache : List Byte) (idx : Nat) (hidx : idx < 2 ^ 34) (roots : List Val)

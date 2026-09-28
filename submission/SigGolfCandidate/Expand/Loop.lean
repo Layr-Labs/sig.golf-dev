@@ -17,7 +17,7 @@ byte view of memory is `applyCopy (src, dst, n)` of the old one.
 -/
 
 namespace SigGolfCandidate.Expand
-open RiscvZkvm.Rv64 SigGolf SigGolf.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
+open RiscvZkvm.Rv64 SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
 
 def loopCode : List (BitVec 32) :=
   [0x00036183, 0x0033a023, 0x00430313, 0x00438393, 0xfff40413, 0xfe0416e3]

@@ -6,7 +6,7 @@ import SigGolfCandidate.Verify.LayerGood
 set_option linter.unusedSimpArgs false
 
 namespace SigGolfCandidate.Verify
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
 
 def DCtx.idx (d : DCtx) : Nat := d.A % 2 ^ 34
 def DCtx.u (d : DCtx) (k : Nat) : Nat := d.A / 2 ^ (34 + 10 * k) % 1024

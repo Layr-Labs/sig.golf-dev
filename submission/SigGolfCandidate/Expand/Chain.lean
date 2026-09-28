@@ -5,7 +5,7 @@ import SigGolfCandidate.Expand.Stages
 -/
 
 namespace SigGolfCandidate.Expand
-open RiscvZkvm.Rv64 SigGolf SigGolf.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
+open RiscvZkvm.Rv64 SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
 
 /-- The whole program up to the final `ecall`: 9662 steps and cycles, `t0 = 1`, `a0 = 0`, and
 the byte view of memory is the copies applied to the initial one. -/

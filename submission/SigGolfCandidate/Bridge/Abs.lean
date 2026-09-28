@@ -7,7 +7,7 @@ import SigGolfCandidate.Bridge.Org
 request `(m, cache bytes)` becomes the abstract request `⟨msgOf m, cacheDec bytes⟩`.
 -/
 
-open OracleSpec OracleComp SigGolf
+open OracleSpec OracleComp SigGolfCandidate.Legacy
 
 namespace SigGolfCandidate.Bridge
 

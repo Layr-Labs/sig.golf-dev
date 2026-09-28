@@ -7,7 +7,7 @@ import SigGolfCandidate.Verify.Init
 set_option linter.unusedSimpArgs false
 
 namespace SigGolfCandidate.Verify
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
 
 theorem or3_lt (a b c n : Nat) : (a ||| b ||| c) < 2 ^ n ↔ a < 2 ^ n ∧ b < 2 ^ n ∧ c < 2 ^ n := by
   constructor

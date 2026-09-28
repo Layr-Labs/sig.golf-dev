@@ -4,7 +4,7 @@ import SigGolfCandidate.Verify.Spec
 /-! # Layer blocks: precode (route, encoding, check, chain-0 dispatch), leaf, compare -/
 
 namespace SigGolfCandidate.Verify
-open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv
+open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv
 
 
 /-- Start of the precode of layer `lay` in stream `t`: after the roots hash (layer 6) or after the

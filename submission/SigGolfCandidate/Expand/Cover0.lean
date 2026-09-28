@@ -3,7 +3,7 @@
 import SigGolfCandidate.Expand.Stages
 
 namespace SigGolfCandidate.Expand
-open RiscvZkvm.Rv64 SigGolf SigGolf.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
+open RiscvZkvm.Rv64 SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv SigGolfCandidate.Rv SigGolfCandidate.Mem
 
 /-- Some copy covers witness byte `i` and reads its `witnessSrc`. -/
 def coverOk (i : Nat) : Bool := copies.any (fun c =>

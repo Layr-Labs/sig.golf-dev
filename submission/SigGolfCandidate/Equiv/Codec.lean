@@ -10,7 +10,7 @@ import SigGolfCandidate.Equiv.Basic
 
 namespace SigGolfCandidate.Equiv
 
-open SigGolf (Byte Bytes)
+open SigGolfCandidate.Legacy (Byte Bytes)
 open SphincsSecurity (Digest Signature Layer FtsTree ChainIndex)
 
 set_option linter.unusedSimpArgs false
