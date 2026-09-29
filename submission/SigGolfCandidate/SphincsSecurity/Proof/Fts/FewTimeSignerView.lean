@@ -13,7 +13,7 @@ namespace SphincsSecurity.Concrete
 open OracleComp OracleSpec
 
 def selectedFewTimeView (index : Index) (leaves : IndexGroup → FtsLeaf) : FewTimeView :=
-  (index, leaves)
+  (index, fun tree => leaves (ftsIndexOf tree))
 
 noncomputable def signWithView (secretKey : SecretKey) (message : Message) :
     OracleComp OracleWorld (Option Signature × Option FewTimeView) := do
