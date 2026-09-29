@@ -37,8 +37,8 @@ def seg57 : List (BitVec 32) := [0x00341193#32, 0x6e01b483#32, 0x0084d493#32, 0x
 def seg64 : List (BitVec 32) := [0x0014d493#32, 0x00178793#32, 0xfe049ce3#32]
 /-- instructions 67 .. 69: addi s0, s0, 1; addi a7, x0, 14; bne s0, a7, -48 -/
 def seg67 : List (BitVec 32) := [0x00140413#32, 0x00e00893#32, 0xfd1418e3#32]
-/-- instructions 70 .. 71: addi a7, x0, 134; blt a7, a5, +852 -/
-def seg70 : List (BitVec 32) := [0x08600893#32, 0x34f8ca63#32]
+/-- instructions 70 .. 71: addi a7, x0, 132; blt a7, a5, +852 -/
+def seg70 : List (BitVec 32) := [0x08400893#32, 0x34f8ca63#32]
 /-- instructions 72 .. 80: lui t4, 0x3; addi t4, t4, 1024; lui t5, 0x1; addi t5, t5, -1776; addi t6, t5, 8; sd x0, 1888(x0) ... -/
 def seg72 : List (BitVec 32) := [0x00003eb7#32, 0x400e8e93#32, 0x00001f37#32, 0x910f0f13#32, 0x008f0f93#32, 0x76003023#32, 0x76000b93#32, 0x00004c37#32, 0x00000413#32]
 /-- instructions 81 .. 87 (sch_leaf): slli gp, s0, 3; ld s1, 1760(gp); srli s1, s1, 8; ld a3, 1768(gp); srli a3, a3, 8; xor a3, a3, s1 ... -/
@@ -64,7 +64,7 @@ def seg126 : List (BitVec 32) := [0x00194193#32, 0x008b8b93#32, 0x003bb023#32]
 /-- instructions 129 .. 131 (sch_last): addi s0, s0, 1; addi a7, x0, 15; bne s0, a7, -200 -/
 def seg129 : List (BitVec 32) := [0x00140413#32, 0x00f00893#32, 0xf3141ce3#32]
 /-- instructions 132 .. 133: lui s9, 0x4; addi s9, s9, -1152 -/
-def seg132 : List (BitVec 32) := [0x00004cb7#32, 0xb80c8c93#32]
+def seg132 : List (BitVec 32) := [0x00004cb7#32, 0xb60c8c93#32]
 /-- instructions 134 .. 134 (pad_loop): beq t4, s9, +20 -/
 def seg134 : List (BitVec 32) := [0x019e8a63#32]
 /-- instructions 135 .. 136: ld gp, 0(t4); bne gp, x0, +592 -/
@@ -83,44 +83,44 @@ def seg153 : List (BitVec 32) := [0x00341193#32, 0x6e01b483#32, 0x008c81b3#32, 0
 def seg160 : List (BitVec 32) := [0x00003337#32, 0x31030313#32, 0x000013b7#32, 0x82038393#32, 0x03c00b13#32]
 /-- instructions 165 .. 170 (copy_sec_4): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg165 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 171 .. 175: lui t1, 0x4; addi t1, t1, -1152; lui t2, 0x2; addi t2, t2, 184; addi s6, x0, 1 -/
-def seg171 : List (BitVec 32) := [0x00004337#32, 0xb8030313#32, 0x000023b7#32, 0x0b838393#32, 0x00100b13#32]
+/-- instructions 171 .. 175: lui t1, 0x4; addi t1, t1, -1184; lui t2, 0x2; addi t2, t2, 184; addi s6, x0, 1 -/
+def seg171 : List (BitVec 32) := [0x00004337#32, 0xb6030313#32, 0x000023b7#32, 0x0b838393#32, 0x00100b13#32]
 /-- instructions 176 .. 181 (copy_ctr0_5): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg176 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 182 .. 186: lui t1, 0x4; addi t1, t1, -1148; lui t2, 0x1; addi t2, t2, 376; addi s6, x0, 212 -/
-def seg182 : List (BitVec 32) := [0x00004337#32, 0xb8430313#32, 0x000013b7#32, 0x17838393#32, 0x0d400b13#32]
+/-- instructions 182 .. 186: lui t1, 0x4; addi t1, t1, -1180; lui t2, 0x1; addi t2, t2, 376; addi s6, x0, 212 -/
+def seg182 : List (BitVec 32) := [0x00004337#32, 0xb6430313#32, 0x000013b7#32, 0x17838393#32, 0x0d400b13#32]
 /-- instructions 187 .. 192 (copy_body0_6): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg187 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 193 .. 197: lui t1, 0x4; addi t1, t1, -300; lui t2, 0x2; addi t2, t2, 188; addi s6, x0, 1 -/
-def seg193 : List (BitVec 32) := [0x00004337#32, 0xed430313#32, 0x000023b7#32, 0x0bc38393#32, 0x00100b13#32]
+/-- instructions 193 .. 197: lui t1, 0x4; addi t1, t1, -332; lui t2, 0x2; addi t2, t2, 188; addi s6, x0, 1 -/
+def seg193 : List (BitVec 32) := [0x00004337#32, 0xeb430313#32, 0x000023b7#32, 0x0bc38393#32, 0x00100b13#32]
 /-- instructions 198 .. 203 (copy_ctr1_7): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg198 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 204 .. 208: lui t1, 0x4; addi t1, t1, -296; lui t2, 0x1; addi t2, t2, 1224; addi s6, x0, 192 -/
-def seg204 : List (BitVec 32) := [0x00004337#32, 0xed830313#32, 0x000013b7#32, 0x4c838393#32, 0x0c000b13#32]
+/-- instructions 204 .. 208: lui t1, 0x4; addi t1, t1, -328; lui t2, 0x1; addi t2, t2, 1224; addi s6, x0, 192 -/
+def seg204 : List (BitVec 32) := [0x00004337#32, 0xeb830313#32, 0x000013b7#32, 0x4c838393#32, 0x0c000b13#32]
 /-- instructions 209 .. 214 (copy_body1_8): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg209 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 215 .. 219: lui t1, 0x4; addi t1, t1, 472; lui t2, 0x2; addi t2, t2, 192; addi s6, x0, 1 -/
-def seg215 : List (BitVec 32) := [0x00004337#32, 0x1d830313#32, 0x000023b7#32, 0x0c038393#32, 0x00100b13#32]
+/-- instructions 215 .. 219: lui t1, 0x4; addi t1, t1, 440; lui t2, 0x2; addi t2, t2, 192; addi s6, x0, 1 -/
+def seg215 : List (BitVec 32) := [0x00004337#32, 0x1b830313#32, 0x000023b7#32, 0x0c038393#32, 0x00100b13#32]
 /-- instructions 220 .. 225 (copy_ctr2_9): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg220 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 226 .. 230: lui t1, 0x4; addi t1, t1, 476; lui t2, 0x1; addi t2, t2, 1992; addi s6, x0, 192 -/
-def seg226 : List (BitVec 32) := [0x00004337#32, 0x1dc30313#32, 0x000013b7#32, 0x7c838393#32, 0x0c000b13#32]
+/-- instructions 226 .. 230: lui t1, 0x4; addi t1, t1, 444; lui t2, 0x1; addi t2, t2, 1992; addi s6, x0, 192 -/
+def seg226 : List (BitVec 32) := [0x00004337#32, 0x1bc30313#32, 0x000013b7#32, 0x7c838393#32, 0x0c000b13#32]
 /-- instructions 231 .. 236 (copy_body2_10): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg231 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 237 .. 241: lui t1, 0x4; addi t1, t1, 1244; lui t2, 0x2; addi t2, t2, 196; addi s6, x0, 1 -/
-def seg237 : List (BitVec 32) := [0x00004337#32, 0x4dc30313#32, 0x000023b7#32, 0x0c438393#32, 0x00100b13#32]
+/-- instructions 237 .. 241: lui t1, 0x4; addi t1, t1, 1212; lui t2, 0x2; addi t2, t2, 196; addi s6, x0, 1 -/
+def seg237 : List (BitVec 32) := [0x00004337#32, 0x4bc30313#32, 0x000023b7#32, 0x0c438393#32, 0x00100b13#32]
 /-- instructions 242 .. 247 (copy_ctr3_11): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg242 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 248 .. 252: lui t1, 0x4; addi t1, t1, 1248; lui t2, 0x2; addi t2, t2, -1336; addi s6, x0, 192 -/
-def seg248 : List (BitVec 32) := [0x00004337#32, 0x4e030313#32, 0x000023b7#32, 0xac838393#32, 0x0c000b13#32]
+/-- instructions 248 .. 252: lui t1, 0x4; addi t1, t1, 1216; lui t2, 0x2; addi t2, t2, -1336; addi s6, x0, 192 -/
+def seg248 : List (BitVec 32) := [0x00004337#32, 0x4c030313#32, 0x000023b7#32, 0xac838393#32, 0x0c000b13#32]
 /-- instructions 253 .. 258 (copy_body3_12): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg253 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 259 .. 263: lui t1, 0x4; addi t1, t1, 2016; lui t2, 0x2; addi t2, t2, 200; addi s6, x0, 1 -/
-def seg259 : List (BitVec 32) := [0x00004337#32, 0x7e030313#32, 0x000023b7#32, 0x0c838393#32, 0x00100b13#32]
+/-- instructions 259 .. 263: lui t1, 0x4; addi t1, t1, 1984; lui t2, 0x2; addi t2, t2, 200; addi s6, x0, 1 -/
+def seg259 : List (BitVec 32) := [0x00004337#32, 0x7c030313#32, 0x000023b7#32, 0x0c838393#32, 0x00100b13#32]
 /-- instructions 264 .. 269 (copy_ctr4_13): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg264 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
-/-- instructions 270 .. 274: lui t1, 0x4; addi t1, t1, 2020; lui t2, 0x2; addi t2, t2, -568; addi s6, x0, 188 -/
-def seg270 : List (BitVec 32) := [0x00004337#32, 0x7e430313#32, 0x000023b7#32, 0xdc838393#32, 0x0bc00b13#32]
+/-- instructions 270 .. 274: lui t1, 0x4; addi t1, t1, 1988; lui t2, 0x2; addi t2, t2, -568; addi s6, x0, 188 -/
+def seg270 : List (BitVec 32) := [0x00004337#32, 0x7c430313#32, 0x000023b7#32, 0xdc838393#32, 0x0bc00b13#32]
 /-- instructions 275 .. 280 (copy_body4_14): lwu gp, 0(t1); sw gp, 0(t2); addi t1, t1, 4; addi t2, t2, 4; addi s6, s6, -1; bne s6, x0, -20 -/
 def seg275 : List (BitVec 32) := [0x00036183#32, 0x0033a023#32, 0x00430313#32, 0x00438393#32, 0xfffb0b13#32, 0xfe0b16e3#32]
 /-- instructions 281 .. 283: addi t0, x0, 1; addi a0, x0, 0; ecall  -/

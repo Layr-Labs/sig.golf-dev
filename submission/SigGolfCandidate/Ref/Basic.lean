@@ -73,7 +73,7 @@ def slice (l : List Byte) (off len : Nat) : List Byte := (l.drop off).take len
 
 def nChains : Nat := 42
 /-- The WOTS target sum (the 42 3-bit digits of an accepted encoding sum to it). -/
-def targetSum : Nat := 182
+def targetSum : Nat := 180
 /-- Old name of `targetSum`. -/
 abbrev target : Nat := targetSum
 /-- The number of hypertree layers `d`. -/
@@ -88,7 +88,7 @@ def porsK : Nat := 15
 /-- PORS leaves (`POR_T = 2^14`). -/
 def porsT : Nat := 2 ^ porsH
 /-- Authentication-node slots (`POR_M`, the octopus bound). -/
-def porsM : Nat := 120
+def porsM : Nat := 118
 /-- Schedule segments (`POR_SEGS = 2 k - 1`: one per leaf start, one per merge). -/
 def porsSegs : Nat := 2 * porsK - 1
 /-- Digest trials `A_max`. -/
@@ -96,7 +96,7 @@ def aMax : Nat := 2 ^ 20
 /-- The counter limit `C_max`: the signer tries `c < cMax`, the verifier rejects `c ≥ cMax`. -/
 def cMax : Nat := 2 ^ 22
 /-- Signature bytes `S`. -/
-def sigBytes : Nat := 6100
+def sigBytes : Nat := 6068
 /-- Witness bytes `W`. -/
 def witBytes : Nat := 6348
 

@@ -13,7 +13,7 @@ The abstract `Signature` is witness-shaped (`SphincsSecurity.FtsSignature`: slot
   `Ref.wStream = 272` by a pointer (header byte `b`: `a = b mod 16`, merge = bit 4, `t` = bit 5,
   normalised when `a = 0`; the `a` nodes at `ptr + 8 + 16 i`; next header at `ptr + 8 + 16 a`), bytes
   beyond the witness read as zero, the layer bodies and the counters.
-* `compressList` / `compress : Signature → Bytes 6100`: `rho | secrets | the nodes of segments
+* `compressList` / `compress : Signature → Bytes 6068`: `rho | secrets | the nodes of segments
   0..28 concatenated, zero padded (or cut) to 120 nodes | per layer LE32 counter, chain values, path`.
 * `aExpand m pk σ`: the digest query of `rho = σ[0..16)` and `m` through the abstract hash, then the
   pure reconstruction `Ref.expandOf` of the reference.
@@ -91,13 +91,13 @@ def compressList (σ : Signature) : List Byte :=
     (List.ofFn (layerBytes σ)).flatten
 
 /-- **The compact signature**. -/
-def compress (σ : Signature) : Bytes 6100 := Ref.ofList 6100 (compressList σ)
+def compress (σ : Signature) : Bytes 6068 := Ref.ofList 6068 (compressList σ)
 
 /-! ## The abstract expansion -/
 
 /-- **The abstract expansion**: the digest of `rho = σ[0..16)` and the message (one abstract query),
 then the reference's pure reconstruction `Ref.expandOf` (which fails on malformed signatures). -/
-def aExpand (m : Message) (pk : PublicKey) (σ : Bytes 6100) : AComp (Option (Bytes 6348)) := do
+def aExpand (m : Message) (pk : PublicKey) (σ : Bytes 6068) : AComp (Option (Bytes 6348)) := do
   let d ← SphincsSecurity.Concrete.messageDigest (m := AComp) 0 pk.root m
     (Ref.ofList 16 (Ref.sigRho (Ref.toList σ)))
   pure ((Ref.expandOf (Ref.toList σ) d.toNat).map (Ref.ofList 6348))
@@ -116,7 +116,7 @@ theorem length_layerBytes (σ : Signature) (lay : Layer) :
   rw [length_flatten_ofFn _ 16 (fun j => length_dv _), length_flatten_ofFn _ 16 (fun j => length_dv _)]
   fin_cases lay <;> rfl
 
-theorem length_compressList (σ : Signature) : (compressList σ).length = 6100 := by
+theorem length_compressList (σ : Signature) : (compressList σ).length = 6068 := by
   simp only [compressList, List.length_append, length_dv, List.length_take, Ref.zeros,
     List.length_replicate]
   rw [length_flatten_ofFn _ 16 (fun j => length_dv _)]
@@ -129,6 +129,6 @@ theorem length_compressList (σ : Signature) : (compressList σ).length = 6100 :
   omega
 
 theorem toList_compress (σ : Signature) : Ref.toList (compress σ) = compressList σ :=
-  Ref.toList_ofList 6100 _ (length_compressList σ)
+  Ref.toList_ofList 6068 _ (length_compressList σ)
 
 end SigGolfCandidate.Equiv

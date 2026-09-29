@@ -146,7 +146,7 @@ def buildPorsTree (S : List Byte) (idx : Nat) :
   let levels ← buildAllLevels (porsNodeFmt idx) porsH leaves
   pure (levels, secrets)
 
-/-- The FTS part of the signature (135 items of 16 bytes): the secrets of the sorted leaves
+/-- The FTS part of the signature (133 items of 16 bytes): the secrets of the sorted leaves
 `vs`, the authentication nodes `levels[h][j]` in schedule read order, zero items up to
 `porsK + porsM`. -/
 def porsOpening (vs : List Nat) (levels : List (List Val)) (secrets : List Val) : List Val :=
@@ -212,7 +212,7 @@ def signLayers (S cache : List Byte) (idx : Nat) :
       | none => pure none
       | some rest => pure (some (rest ++ [(c, vals, path)]))
 
-/-- Signature bytes: `rho | FTS items (135 × 16) | (LE32 c, vals, path)_{lay=0..4}`. -/
+/-- Signature bytes: `rho | FTS items (133 × 16) | (LE32 c, vals, path)_{lay=0..4}`. -/
 def serialize (rho : Val) (fts : List Val) (lays : List LayerSig) : List Byte :=
   rho ++ fts.flatten ++
     (lays.map fun l => le32 l.1 ++ l.2.1.flatten ++ l.2.2.flatten).flatten
@@ -234,20 +234,20 @@ def signList (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) 
   else pure none
 
 def signRef (sk : Bytes 32) (cache : Cache) (m : Bytes 32) :
-    OracleComp HashSpec (Option (Bytes 6100)) := do
+    OracleComp HashSpec (Option (Bytes 6068)) := do
   let r ← signList (toList sk) (toList cache) (toList m)
-  pure (r.map (ofList 6100))
+  pure (r.map (ofList 6068))
 
 /-! ## Signature and witness layout -/
 
 /-- Bytes of layer `lay` in the signature: `LE32 c`, 42 chain values, `h_lay` siblings. -/
 def sigLayerBytes (lay : Nat) : Nat := 4 + 16 * nChains + 16 * height lay
-/-- Bytes before the layers (`ref.LAYER0`): `rho` and the 135 FTS items (2176). -/
+/-- Bytes before the layers (`ref.LAYER0`): `rho` and the 133 FTS items (2144). -/
 def headBytes : Nat := 16 + 16 * (porsK + porsM)
 /-- Offset of layer `lay` in the signature (`ref.sig_layer_offset`). -/
 def sigLayerOff (lay : Nat) : Nat := headBytes + ((List.range lay).map sigLayerBytes).sum
 
-/-- Signature fields (`ref.parse`): `rho`, FTS item `i < 135` (secrets `i < 15`, then auth slots). -/
+/-- Signature fields (`ref.parse`): `rho`, FTS item `i < 133` (secrets `i < 15`, then auth slots). -/
 def sigRho (sig : List Byte) : Val := slice sig 0 16
 def sigItem (sig : List Byte) (i : Nat) : Val := slice sig (16 + 16 * i) 16
 def sigAuth (sig : List Byte) (i : Nat) : Val := sigItem sig (porsK + i)
@@ -261,7 +261,7 @@ size (`STREAM_BYTES = 8 * 29 + 16 * 120`), layer bodies (`W_LAYERS`). -/
 def wPi : Nat := 16
 def wSec : Nat := 32
 def wStream : Nat := wSec + 16 * porsK
-def streamBytes : Nat := 8 * porsSegs + 16 * porsM
+def streamBytes : Nat := 8 * porsSegs + 16 * 120
 def wLayers : Nat := wStream + streamBytes
 /-- Offset of layer `lay`'s body (chain values, path) in the witness (`ref.wit_layer_offset`). -/
 def witLayerOff (lay : Nat) : Nat := wLayers + ((List.range lay).map fun l => sigLayerBytes l - 4).sum
@@ -293,8 +293,8 @@ def witnessList (sig : List Byte) (v vs segs : List Nat) : List Byte :=
     ((List.range nLayers).map (sigCounterBytes sig)).flatten
 
 /-- The part of `ref.expand` after the digest query (no queries): `none` unless the 15 leaf
-indices of `N` are distinct, their octopus has `≤ 120` nodes and the unused auth slots
-`n .. 119` (`n` = the octopus size = the number of reads) are zero; else the witness. -/
+indices of `N` are distinct, their octopus has `≤ 118` nodes and the unused auth slots
+`n .. 117` (`n` = the octopus size = the number of reads) are zero; else the witness. -/
 def expandOf (sig : List Byte) (N : Nat) : Option (List Byte) :=
   let v := leavesOf N
   if !decide v.Nodup then none
@@ -313,7 +313,7 @@ def expandList (m sig : List Byte) : OracleComp HashSpec (Option (List Byte)) :=
   pure (expandOf sig N)
 
 /-- `ref.expand(pk, m, sig)` (the public key is unused). -/
-def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6100) :
+def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6068) :
     OracleComp HashSpec (Option (Bytes 6348)) := do
   let r ← expandList (toList m) (toList sig)
   pure (r.map (ofList 6348))
@@ -489,7 +489,7 @@ def verifyRef (m : Bytes 32) (pk : Bytes 16) (w : Bytes 6348) : OracleComp HashS
   verifyList (toList m) (toList pk) (toList w)
 
 /-- `ref.verify`: expand, then verify the witness (`false` if expand fails). -/
-def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6100) : OracleComp HashSpec Bool := do
+def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6068) : OracleComp HashSpec Bool := do
   match ← expandRef m pk sig with
   | none => pure false
   | some w => verifyRef m pk w

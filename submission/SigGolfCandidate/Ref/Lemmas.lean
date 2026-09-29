@@ -385,9 +385,9 @@ theorem porsSegs_eq : porsSegs = 29 := rfl
 
 /-! ## Signature and witness layout -/
 
-theorem headBytes_eq : headBytes = 2176 := rfl
+theorem headBytes_eq : headBytes = 2144 := rfl
 theorem sigLayerOff_values :
-    (List.range (nLayers + 1)).map sigLayerOff = [2176, 3028, 3800, 4572, 5344, 6100] := by
+    (List.range (nLayers + 1)).map sigLayerOff = [2144, 2996, 3768, 4540, 5312, 6068] := by
   decide
 theorem sigBytes_eq_sigLayerOff : sigBytes = sigLayerOff nLayers := by decide
 theorem wStream_eq : wStream = 272 := rfl
@@ -436,8 +436,8 @@ private theorem length_flatten_map_range' (n : Nat) (f : Nat → List Byte) (g :
 bytes and 15 sorted leaves). -/
 theorem length_witnessList (sig : List Byte) (hsig : sig.length = sigBytes) (v vs segs : List Nat)
     (hvs : vs.length = porsK) : (witnessList sig v vs segs).length = witBytes := by
-  have hs : sig.length = 6100 := hsig
-  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigLayerBytes lay ≤ 6100 := by decide
+  have hs : sig.length = 6068 := hsig
+  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigLayerBytes lay ≤ 6068 := by decide
   have hitem : ∀ i, i < porsK → (sigItem sig i).length = 16 := fun i hi =>
     length_slice _ _ _ (by rw [hs]; unfold porsK at hi; omega)
   have hbody : ∀ lay, lay < nLayers → (sigLayerBody sig lay).length = sigLayerBytes lay - 4 :=

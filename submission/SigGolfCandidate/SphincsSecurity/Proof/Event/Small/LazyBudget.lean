@@ -6,9 +6,9 @@ import SigGolfCandidate.SphincsSecurity.Proof.Fts.DigestMessageCost
 # The capped adversary's budget in the random-oracle game
 
 In the random-oracle game each own hash query of the capped adversary costs one call, counted either
-as a message call or by the marker, and each signing request costs in expectation at most `2^11`
+as a message call or by the marker, and each signing request costs in expectation at most `2^13`
 message calls, well below its charge: the randomizer of each digest trial is fresh, so a trial is
-admissible with probability about `2^-10`.
+admissible with probability about `2^-12`.
 -/
 
 namespace SphincsSecurity.Concrete.EventSmall
@@ -72,8 +72,8 @@ theorem expectedBoundaryMessageCalls_signAfterDigest (key : SecretKey) (randomne
 
 theorem digestAttemptExpectation_le (key : SecretKey) (message : Message) (cache : QueryCache HashSpec)
     (hcache : QueryCache.enncard cache ≤ 2 ^ 126) :
-    digestAttemptExpectation digestAttemptLimit key message cache ≤ 2 ^ 11 := by
-  have hrate : ((2 ^ 11 : ENNReal))⁻¹ ≤ (1 - (2 ^ 127 : ENNReal) * ((2 ^ randomnessBits : Nat) : ENNReal)⁻¹) *
+    digestAttemptExpectation digestAttemptLimit key message cache ≤ 2 ^ 13 := by
+  have hrate : ((2 ^ 13 : ENNReal))⁻¹ ≤ (1 - (2 ^ 127 : ENNReal) * ((2 ^ randomnessBits : Nat) : ENNReal)⁻¹) *
       admissibleProbability := by
     have hhalf : (1 - (2 ^ 127 : ENNReal) * ((2 ^ randomnessBits : Nat) : ENNReal)⁻¹) = 2⁻¹ := by
       apply (ENNReal.toReal_eq_toReal_iff' (by finiteness) (by finiteness)).mp
@@ -83,7 +83,7 @@ theorem digestAttemptExpectation_le (key : SecretKey) (message : Message) (cache
       norm_num [randomnessBits, ENNReal.toReal_mul, ENNReal.toReal_inv]
     rw [hhalf]
     calc
-      ((2 ^ 11 : ENNReal))⁻¹ ≤ 2⁻¹ * (870 : ENNReal)⁻¹ := by
+      ((2 ^ 13 : ENNReal))⁻¹ ≤ 2⁻¹ * (2142 : ENNReal)⁻¹ := by
         rw [← ENNReal.mul_inv (Or.inl (by norm_num)) (Or.inl (by norm_num))]
         exact ENNReal.inv_le_inv.mpr (by norm_num)
       _ ≤ _ := mul_le_mul' le_rfl admissibleProbability_ge
@@ -94,13 +94,13 @@ theorem digestAttemptExpectation_le (key : SecretKey) (message : Message) (cache
     apply (ENNReal.toReal_le_toReal (by finiteness) (by finiteness)).mp
     norm_num
   have h := digestAttemptExpectation_mul_message_rate_le_freshSelection digestAttemptLimit key message cache cache le_rfl
-    (2 ^ 127) ((2 ^ 11 : ENNReal)⁻¹) hrate hbudget
+    (2 ^ 127) ((2 ^ 13 : ENNReal)⁻¹) hrate hbudget
   have hone := h.trans probEvent_le_one
   rwa [← div_eq_mul_inv, ENNReal.div_le_iff (by positivity) (by finiteness), one_mul] at hone
 
 theorem expectedBoundaryMessageCalls_sign_le (key : SecretKey) (message : Message) (cache : QueryCache HashSpec)
     (hcache : QueryCache.enncard cache ≤ 2 ^ 126) :
-    expectedBoundaryMessageCalls key.parameter (sign key message) cache ≤ 2 ^ 11 := by
+    expectedBoundaryMessageCalls key.parameter (sign key message) cache ≤ 2 ^ 13 := by
   rw [sign_eq, expectedBoundaryMessageCalls_bind]
   refine le_trans (add_le_add le_rfl (le_of_eq (ENNReal.tsum_eq_zero.mpr fun result => ?_))) ?_
   · apply mul_eq_zero_of_right
