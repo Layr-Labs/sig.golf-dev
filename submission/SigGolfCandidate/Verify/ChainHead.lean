@@ -118,7 +118,7 @@ theorem entIdx_spec (c : CCtx) (i : Nat) (hi : i < 42) :
 
 def tabOk (lay i : Nat) : Bool :=
   decide (tabAddr lay i % 4 = 0) && decide (0x1000 ≤ tabAddr lay i) &&
-    decide (tabAddr lay i + 1024 ≤ 0x1000 + 4 * (256 * 275)) && decide (bVal lay i < 2 ^ 32) &&
+    decide (tabAddr lay i + 1024 ≤ 0x1000 + 4 * (256 * 279)) && decide (bVal lay i < 2 ^ 32) &&
     decide (nextPc' lay i = s1Pc lay i + 15) &&
     (!(decide (i + 1 < 42) && !hasPrep (i + 1)) || bVal lay (i + 1) == bVal lay i)
 
@@ -131,7 +131,7 @@ theorem tabOk_at (lay i : Nat) (hl : lay < 5) (hi : i < 42) : tabOk lay i = true
     (List.mem_range.mpr hi)
 
 theorem tabOk_spec {lay i : Nat} (h : tabOk lay i = true) :
-    tabAddr lay i % 4 = 0 ∧ 0x1000 ≤ tabAddr lay i ∧ tabAddr lay i + 1024 ≤ 0x1000 + 4 * (256 * 275) ∧
+    tabAddr lay i % 4 = 0 ∧ 0x1000 ≤ tabAddr lay i ∧ tabAddr lay i + 1024 ≤ 0x1000 + 4 * (256 * 279) ∧
       bVal lay i < 2 ^ 32 ∧ (i + 1 < 42 → hasPrep (i + 1) = false → bVal lay (i + 1) = bVal lay i) ∧
       nextPc' lay i = s1Pc lay i + 15 := by
   simp only [tabOk, Bool.and_eq_true, decide_eq_true_eq, Bool.or_eq_true, Bool.not_eq_true',
@@ -188,8 +188,7 @@ theorem Glob_frame {gk : List (Reg × Word)} {wl pk : List Byte} {s t : MachineS
 /-! ## Heads -/
 
 def headCost (lay i : Nat) : Nat :=
-  (if useKnownIndex i then 5 else 6) + (if hasPrep i then 3 else 0) +
-    (if hasPrep i && hasLui lay i then 1 else 0)
+  6 + (if hasPrep i then 3 else 0) + (if hasPrep i && hasLui lay i then 1 else 0)
 
 theorem PRes.toState_pc_some (r : PRes) (s : MachineState) (e : E) (h : r.spc = some e) :
     (r.toState s).pc = e.eval s := by
@@ -224,14 +223,13 @@ theorem head_step (c : CCtx) (hc : c.ok) (i : Nat) (hi1 : 1 ≤ i) (hi : i < 42)
   have hkeep' := keepB_ok hkeep s
   have hl := hc.1
   obtain ⟨ht4, ht1, htb, hB, -, -⟩ := tabOk_spec (tabOk_at c.lay i hl hi)
-  have hmem : r.st.mem = [(⟨none, BitVec.ofNat 64 0xC0⟩, stB 5 (cw (indexWord i)))] := by simp [hr, headExp]
+  have hmem : r.st.mem = [(⟨none, BitVec.ofNat 64 0xC0⟩, stB 5 (cw i))] := by simp [hr, headExp]
   have fr : ∀ A, A < 2 ^ 64 → A ≠ 0xC0 → (r.toState s).getMem (BitVec.ofNat 64 A) = s.getMem (BitVec.ofNat 64 A) := by
     intro A hA h1
     rw [PRes.toState_getMem, memEval_frame_ofNat _ _ _ hA (by rw [hmem]; simp; omega)]
   have m0 : ((r.toState s).getMem (BitVec.ofNat 64 0xC0)).toNat =
       (s.getMem (BitVec.ofNat 64 0xC0)).toNat % 2 ^ 40 + 2 ^ 40 * i := by
-    rw [PRes.toState_getMem, hmem, memEval_cons_eq _ _ _ _ _ rfl,
-      stB_toNat _ _ _ (by omega), indexWord_mod]
+    rw [PRes.toState_getMem, hmem, memEval_cons_eq _ _ _ _ _ rfl, stB_toNat _ _ _ (by omega)]
     have := hCB.2.2
     generalize (s.getMem (BitVec.ofNat 64 0xC0)).toNat = w at *
     norm_num at this ⊢
