@@ -105,14 +105,14 @@ Stop at the first failure. We say the `experiment succeeds` when all stages succ
 
 `N_P` counts program P's compressions; it is zero if P is never reached. `BUDGET_P` denotes P's named budget.
 
-1. **Completeness:** for every secret key, `Pr_H[experiment succeeds for every message] >= 1 - FAILURE`.
-2. **Compression budgets:** for every secret key and P in {`keygen`, `sign`, `expand`}, `E_{H,M}[2^(N_P / BUDGET_P)] <= 2`.
+1. **Completeness** ([Lean statement](SigGolf/Statements.lean#L21-L24)): for every secret key, `Pr_H[experiment succeeds for every message] >= 1 - FAILURE`.
+2. **Compression budgets** ([Lean statement](SigGolf/Statements.lean#L26-L31)): for every secret key and P in {`keygen`, `sign`, `expand`}, `E_{H,M}[2^(N_P / BUDGET_P)] <= 2`.
 
 `Pr_H` is over H; `E_{H,M}` is over an independently sampled random oracle H and uniform 32-byte message M.
 
 **Remark.** After H is fixed, adaptively chosen messages may cost much more than this average. Any scheme can rule this out by signing the message hashed with a salt derived from the secret key and the message, and carried in the signature. This costs only 16 signature bytes and one hash, so we prefer to rely on this heuristic rather than complicating the rules.
 
-3. **Verification cycles:** for every secret key, message and oracle, if the experiment succeeds, [`verify`](#verify)'s cycles plus the witness charge `⌈W / 256⌉` are at most [`C`](#submission).
+3. **Verification cycles** ([Lean statement](SigGolf/Statements.lean#L33-L38)): for every secret key, message and oracle, if the experiment succeeds, [`verify`](#verify)'s cycles plus the witness charge `⌈W / 256⌉` are at most [`C`](#submission).
 
 ### Security
 
@@ -129,11 +129,11 @@ Consider the following experiment for a classical probabilistic adversary `A` wi
 
 The total hash-call count includes key generation, signing, `A`’s queries, and final expansion and verification when performed.
 
-**Security:** for every A and `Q >= 1`, `Pr[A wins] <= Q / 2^SECURITY_BITS`, over the secret key, H, and `A`’s private randomness.
+**Security** ([Lean statement](SigGolf/Statements.lean#L40-L45)): for every A and `Q >= 1`, `Pr[A wins] <= Q / 2^SECURITY_BITS`, over the secret key, H, and `A`’s private randomness.
 
 ### Termination
 
-**Termination:** every program terminates with a result or failure in fewer than `CYCLE_LIMIT` cycles, for every input and oracle.
+**Termination** ([Lean statement](SigGolf/Statements.lean#L47-L51)): every program terminates with a result or failure in fewer than `CYCLE_LIMIT` cycles, for every input and oracle.
 
 ## RISC-V interface
 
@@ -182,6 +182,17 @@ HASH writes H's 32-byte answer at the output address.
 
 ## Lean project
 
-`SigGolf.Certificate submission C` in [SigGolf/Statements.lean](SigGolf/Statements.lean) is the competition claim for the exact four program images and declared sizes. [SigGolf/Security.lean](SigGolf/Security.lean) defines the attacker and both forgery experiments; [SigGolf/Riscv.lean](SigGolf/Riscv.lean) defines execution and costs. In Lean, the adversary is an `OracleComp` over coins, H, and the signing oracle: a computation that makes finitely many queries and then submits a forgery or gives up. A strategy that could run for ever is represented by its truncations, which give up where they are cut. Giving up never wins, and such a strategy's win probability is the limit of its truncations', so the bound over all adversaries bounds every adaptive strategy.
+[`SigGolf.Certificate submission C`](SigGolf/Statements.lean#L53-L60) in [SigGolf/Statements.lean](SigGolf/Statements.lean) is the competition claim for the exact four program images and declared sizes. Besides the five statements above, it contains [`Admission`](SigGolf/Statements.lean#L12-L16): the size maxima, the program size limit, and the buffer layout rules. [SigGolf/Security.lean](SigGolf/Security.lean) defines the attacker and both forgery experiments; [SigGolf/Riscv.lean](SigGolf/Riscv.lean) defines execution and costs. In Lean, the adversary is an `OracleComp` over coins, H, and the signing oracle: a computation that makes finitely many queries and then submits a forgery or gives up. A strategy that could run for ever is represented by its truncations, which give up where they are cut. Giving up never wins, and such a strategy's win probability is the limit of its truncations', so the bound over all adversaries bounds every adaptive strategy.
 
 Build the statements and regression checks with `lake build SigGolf SigGolfTests`. Dependencies are pinned in `lake-manifest.json`. These files define the requirements; they do not certify a particular signature scheme. Submissions are verified from the [sig.golf-submissions](https://github.com/leanEthereum/sig.golf-submissions) repository.
+
+## Known limitations
+
+- **Quantum security:** the security game only considers classical adversaries. NIST level 1 requires ≈ 64 bits of security against quantum adversaries.
+- **Single-user security:** the security game attacks one key, but a real deployment has many users, and an attacker can target all their keys at once. The usual defense gives each key its own public parameter and starts every hash with it, so work done against one user is useless against another. Drake's trick makes this cheap: put a 16-byte public parameter in the public key and pad it with 48 zero bytes to fill a 64-byte block. Since every hash then starts with the same block, the hash state after it is computed once and reused, so multi-user security costs a single extra compression.
+- **MPC for threshold signing:** the keygen and signing budgets let reasonably weak devices, such as hardware wallets, sign. Threshold signing runs keygen and sign inside multi-party computation (MPC), where hashing secret data costs far more. MPC precomputation followed by grinding on public values at signing can help (see [RivaLabs](https://github.com/RivaLabs-Core)).
+- **Trading lifetime for faster keygen and signing:** [hypertree pruning](https://conduition.io/cryptography/hypertree-pruning/) replaces most hypertree leaves with cheap placeholder hashes and grinds the randomizer until each message lands on a kept leaf, which speeds up keygen and signing without changing verification but lowers the safe number of signatures.
+- **Choice of hash function:** the oracle H, with 64-byte input blocks, 32-byte answers, and a cost of one compression per block, fits BLAKE2s, BLAKE3, and the SHA-256 compression function, but not standard SHA-256, nor SHA-3.
+- **Choice of ISA and metering:** RV64IM, the [cost of each instruction](#risc-v-programs), and details such as [where HASH reads its inputs](#system-calls) are one choice among many, and may not match a given zkVM.
+- **Delegating hashes of public values:** the budgets assume the enclave, such as a hardware wallet, computes every hash. Hashes of public values, typically for grinding, could be offloaded to a powerful host, possibly with a SNARK proving correctness.
+- **127 bits of security:** schemes built on 128-bit hash digests, such as SLH-DSA's 128-bit parameter sets, reach 127 bits of security rather than 128: an adversary can try to guess second preimages, and this bound is tight. [This note](https://github.com/leanEthereum/leanVM/releases/download/doc-latest/SPHINCS.pdf) gives a security proof and a matching attack.
