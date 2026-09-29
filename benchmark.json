@@ -22,8 +22,7 @@
       "maxSubmissionBytes": 16777216,
       "runner": {
         "provider": "github-actions",
-        "workflow": "benchmark.yml",
-        "maxConcurrentWorkflows": 1
+        "workflow": "benchmark.yml"
       }
     }
   ]
