@@ -54,6 +54,7 @@
             <li><a href="#memory-layout">Six byte offsets</a> specifying where RISC-V inputs and outputs reside in memory.</li>
             <li>Lean 4 proofs for every <a href="#proofs">required statement</a>.</li>
           </ul>
+          <p>Goal: minimize <code>S × C</code>.</p>
         </section>
 
         <section id="parameters" class="rule-section">
@@ -165,7 +166,7 @@
             <li>Run <a href="#keygen"><code>keygen(secretKey)</code></a>. Failure ends the experiment without a win; otherwise give <code>A</code> the public key and cache.</li>
             <li><code>A</code> may then adaptively query two oracles:
           <div class="two-cards">
-            <div class="detail-card"><b><code>random_oracle(input_A)</code></b><p>Return <code>H(input_A)</code>.</p></div>
+            <div class="detail-card"><b><code>random_oracle(input_A)</code></b><p>For an <code>input_A</code> of <code>64·k</code> bytes, return <code>H(input_A)</code>.</p></div>
             <div class="detail-card"><b><code>signing_oracle(message_A, cache_A)</code></b><p>Run <a href="#sign"><code>sign(secretKey, cache_A, message_A)</code></a> with the original secret key. Return the signature or failure. Add each returned <code>(message_A, signature)</code> to <code>T</code>. Allow at most <a href="#parameter-lifetime"><math class="rule-math" aria-label="L, signing lifetime" title="LIFETIME"><mi>L</mi></math></a> requests.</p></div>
           </div></li>
             <li><code>A</code> makes one final submission in either form:
@@ -213,7 +214,7 @@
             <tr><td><code>0</code></td><td>HASH</td><td><code>a0 = input address</code>, <code>a1 = input length in bytes</code>, <code>a2 = output address</code></td></tr>
             <tr><td><code>1</code></td><td>HALT</td><td><code>a0 = exit code</code> (0 = success)</td></tr>
           </tbody></table></div>
-          <p>HASH writes <code>H</code>'s 32-byte answer at the output address.</p>
+          <p>HASH writes <code>H</code>'s 32-byte answer at the output address. Any other <code>t0</code> fails.</p>
 
           <h3>Further details</h3>
           <dl class="detail-list">
@@ -224,6 +225,7 @@
             <div><dt>Bounds</dt><dd>Every memory access and buffer must fit completely in memory. For unsigned byte address <code>p</code> and length <code>n</code>, require <math class="rule-math" aria-label="p plus n is at most hexadecimal one zero zero zero zero zero zero"><mi>p</mi><mo>+</mo><mi>n</mi><mo>≤</mo><mn>0x1000000</mn></math>. Instruction arithmetic and effective-address calculation follow RV64IM.</dd></div>
             <div><dt>HASH arguments</dt><dd>Addresses and byte length <code>n</code> are unsigned 64-bit values. The input and output addresses must both be 8-byte aligned, and <code>n</code> must be a nonzero multiple of 64. The input's <code>n</code> bytes and the output's 32 bytes must fit entirely in memory.</dd></div>
             <div><dt>HASH execution</dt><dd>Read the <code>n</code> input bytes in increasing address order; they are <code>H</code>'s input. Read all input before writing the answer, so buffers may overlap. Preserve registers and advance PC by 4.</dd></div>
+            <div><dt>Faults</dt><dd>An encoding outside RV64IM (such as compressed, A, F, D, CSR, or <code>FENCE.I</code>), invalid HASH arguments, or any other fault ends the run as a failure; for <code>verify</code>, a rejection.</dd></div>
           </dl>
         </section>
 
@@ -237,10 +239,10 @@
           <h2>Known limitations</h2>
           <dl class="detail-list">
             <div><dt>Quantum security</dt><dd>The security game only considers classical adversaries. NIST level 1 requires ≈ 64 bits of security against quantum adversaries.</dd></div>
-            <div><dt>Single-user security</dt><dd>The security game attacks one key, but a real deployment has many users, and an attacker can target all their keys at once. The usual defense gives each key its own public parameter and starts every hash with it, so work done against one user is useless against another. Drake's trick makes this cheap: put a 16-byte public parameter in the public key and pad it with 48 zero bytes to fill a 64-byte block. Since every hash then starts with the same block, the hash state after it is computed once and reused, so multi-user security costs a single extra compression.</dd></div>
+            <div><dt>Single-user security</dt><dd>The security game targets a single key, but a real attacker can target many users at once. The standard defense starts every hash with a per-key public parameter, so work against one user is useless against others. Drake's trick makes this cheap: a 16-byte parameter in the public key, padded with 48 zero bytes, fills the first 64-byte block of every hash, so its hash state is computed once and reused. Multi-user security then costs one compression and 16 bytes of public key.</dd></div>
             <div><dt>MPC for threshold signing</dt><dd>The keygen and signing budgets let reasonably weak devices, such as hardware wallets, sign. Threshold signing runs keygen and sign inside multi-party computation (MPC), where hashing secret data costs far more. MPC precomputation followed by grinding on public values at signing can help (see <a href="https://github.com/RivaLabs-Core">RivaLabs</a>).</dd></div>
             <div><dt>Trading lifetime for faster keygen and signing</dt><dd><a href="https://conduition.io/cryptography/hypertree-pruning/">Hypertree pruning</a> replaces most hypertree leaves with cheap placeholder hashes and grinds the randomizer until each message lands on a kept leaf, which speeds up keygen and signing without changing verification but lowers the safe number of signatures.</dd></div>
-            <div><dt>Choice of hash function</dt><dd>The oracle <a href="#oracle-definition"><code>H</code></a>, with 64-byte input blocks, 32-byte answers, and a cost of one compression per block, fits BLAKE2s, BLAKE3, and the SHA-256 compression function, but not standard SHA-256, nor SHA-3.</dd></div>
+            <div><dt>Choice of hash function</dt><dd>The oracle <a href="#oracle-definition"><code>H</code></a> takes inputs made of 64-byte blocks, returns 32-byte answers, and costs one compression per block. This cost model is accurate for BLAKE2s, for BLAKE3 on inputs up to 1 KiB, and for the SHA-256 compression function, but less precise for standard SHA-256, whose padding adds a block to every input, and for SHA-3, which absorbs 136 bytes per permutation.</dd></div>
             <div><dt>Choice of ISA and metering</dt><dd>RV64IM, the <a href="#model">cost of each instruction</a>, and details such as <a href="#system-calls">where HASH reads its inputs</a> are one choice among many, and may not match a given zkVM.</dd></div>
             <div><dt>Delegating hashes of public values</dt><dd>The budgets assume the enclave, such as a hardware wallet, computes every hash. Hashes of public values, typically for grinding, could be offloaded to a powerful host, possibly with a SNARK proving correctness.</dd></div>
             <div><dt>127 bits of security</dt><dd>Schemes built on 128-bit hash digests, such as SLH-DSA's 128-bit parameter sets, reach 127 bits of security rather than 128: an adversary can try to guess second preimages, and this bound is tight. <a href="https://github.com/leanEthereum/leanVM/releases/download/doc-latest/SPHINCS.pdf">This note</a> gives a security proof and a matching attack.</dd></div>

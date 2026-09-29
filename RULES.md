@@ -121,7 +121,7 @@ Consider the following experiment for a classical probabilistic adversary `A` wi
 1. Sample H and a uniform secret key independently. Initialize an empty transcript T and count all calls to H throughout the experiment.
 2. Run `keygen(secretKey)`. Failure ends the experiment without a win; otherwise give `A` the public key and cache.
 3. `A` may then adaptively query two oracles:
-   - **`random_oracle(input_A)`:** return H(input_A).
+   - **`random_oracle(input_A)`:** for an `input_A` of 64·k bytes, return H(input_A).
    - **`signing_oracle(message_A, cache_A)`:** run `sign(secretKey, cache_A, message_A)` using the original secret key. Return the signature or failure. Add each returned `(message_A, signature)` to T. Allow at most `LIFETIME` requests.
 4. `A` makes one final submission, choosing either form below:
    - **witness weak unforgeability:** submit `(message_A, witness_A)`. `A` wins if `verify(message_A, public key, witness_A)` accepts, and no pair in T has message `message_A`, and the total hash-call count is at most Q
@@ -168,7 +168,7 @@ ECALL selects one of two services through `t0`:
 |    0 | HASH    | `a0 = input address`, `a1 = input length in bytes`, `a2 = output address` |
 |    1 | HALT    | `a0 = exit code` (0 = success)                                            |
 
-HASH writes H's 32-byte answer at the output address.
+HASH writes H's 32-byte answer at the output address. Any other `t0` fails.
 
 ### Further Details
 
@@ -179,6 +179,7 @@ HASH writes H's 32-byte answer at the output address.
 - **Bounds:** every memory access and buffer must fit completely in memory. For unsigned byte address p and length n, require `p + n <= 0x1000000`. Instruction arithmetic and effective-address calculation follow RV64IM.
 - **HASH arguments:** addresses and byte length n are unsigned 64-bit values. The input and output addresses must both be 8-byte aligned, and n must be a nonzero multiple of 64. The input’s n bytes and the output’s 32 bytes must fit entirely in memory.
 - **HASH execution:** read the n input bytes in increasing address order; they are H’s input. Read all input before writing the answer, so buffers may overlap. Preserve registers and advance PC by 4.
+- **Faults:** an encoding outside RV64IM (such as compressed, A, F, D, CSR, or `FENCE.I`), invalid HASH arguments, or any other fault ends the run as a failure; for `verify`, a rejection.
 
 ## Lean project
 
@@ -189,10 +190,10 @@ Build the statements and regression checks with `lake build SigGolf SigGolfTests
 ## Known limitations
 
 - **Quantum security:** the security game only considers classical adversaries. NIST level 1 requires ≈ 64 bits of security against quantum adversaries.
-- **Single-user security:** the security game attacks one key, but a real deployment has many users, and an attacker can target all their keys at once. The usual defense gives each key its own public parameter and starts every hash with it, so work done against one user is useless against another. Drake's trick makes this cheap: put a 16-byte public parameter in the public key and pad it with 48 zero bytes to fill a 64-byte block. Since every hash then starts with the same block, the hash state after it is computed once and reused, so multi-user security costs a single extra compression.
+- **Single-user security:** the security game targets a single key, but a real attacker can target many users at once. The standard defense starts every hash with a per-key public parameter, so work against one user is useless against others. Drake's trick makes this cheap: a 16-byte parameter in the public key, padded with 48 zero bytes, fills the first 64-byte block of every hash, so its hash state is computed once and reused. Multi-user security then costs one compression and 16 bytes of public key.
 - **MPC for threshold signing:** the keygen and signing budgets let reasonably weak devices, such as hardware wallets, sign. Threshold signing runs keygen and sign inside multi-party computation (MPC), where hashing secret data costs far more. MPC precomputation followed by grinding on public values at signing can help (see [RivaLabs](https://github.com/RivaLabs-Core)).
 - **Trading lifetime for faster keygen and signing:** [hypertree pruning](https://conduition.io/cryptography/hypertree-pruning/) replaces most hypertree leaves with cheap placeholder hashes and grinds the randomizer until each message lands on a kept leaf, which speeds up keygen and signing without changing verification but lowers the safe number of signatures.
-- **Choice of hash function:** the oracle H, with 64-byte input blocks, 32-byte answers, and a cost of one compression per block, fits BLAKE2s, BLAKE3, and the SHA-256 compression function, but not standard SHA-256, nor SHA-3.
+- **Choice of hash function:** the oracle H takes inputs made of 64-byte blocks, returns 32-byte answers, and costs one compression per block. This cost model is accurate for BLAKE2s, for BLAKE3 on inputs up to 1 KiB, and for the SHA-256 compression function, but less precise for standard SHA-256, whose padding adds a block to every input, and for SHA-3, which absorbs 136 bytes per permutation.
 - **Choice of ISA and metering:** RV64IM, the [cost of each instruction](#risc-v-programs), and details such as [where HASH reads its inputs](#system-calls) are one choice among many, and may not match a given zkVM.
 - **Delegating hashes of public values:** the budgets assume the enclave, such as a hardware wallet, computes every hash. Hashes of public values, typically for grinding, could be offloaded to a powerful host, possibly with a SNARK proving correctness.
 - **127 bits of security:** schemes built on 128-bit hash digests, such as SLH-DSA's 128-bit parameter sets, reach 127 bits of security rather than 128: an adversary can try to guess second preimages, and this bound is tight. [This note](https://github.com/leanEthereum/leanVM/releases/download/doc-latest/SPHINCS.pdf) gives a security proof and a matching attack.
