@@ -59,14 +59,12 @@ theorem ftsNode (index : Index) (tree : FtsTree) (secret : FtsLeaf → Digest) (
       exact congrArg truncateHash (h.domain (.ftsLeaf index tree _) (by simp only [hashDomainFields, tweakFields]; decide) _)
   | succ level ih =>
       simp only [ftsNode_succ_eq, evalWithAnswerFn_bind, ih, eval_tweakableHash]
-      exact congrArg truncateHash (h.domain (.ftsNode index tree (ftsHeapIndex (level + 1) nodeIdx)) (by simp only [hashDomainFields, tweakFields]; decide) _)
+      exact congrArg truncateHash (h.domain (.ftsNode index tree (level + 1) nodeIdx) (by simp only [hashDomainFields, tweakFields]; decide) _)
 
 theorem ftsOpen (index : Index) (leaves : IndexGroup → FtsLeaf) (secret : FtsTree → FtsLeaf → Digest) :
     evalWithAnswerFn f (Concrete.ftsOpen parameter index leaves secret) =
       evalWithAnswerFn g (Concrete.ftsOpen parameter index leaves secret) := by
-  rw [eval_ftsOpen, eval_ftsOpen]
-  exact congrArg (honestFts leaves (secret porsTree)) (funext fun level => funext fun nodeIdx =>
-    h.ftsNode _ _ _ _ _)
+  simp only [Concrete.ftsOpen, evalWithAnswerFn_sequenceFin, h.ftsNode]
 
 theorem publicDigestLoop (root : Digest) (message : Message) (attempts : Nat) :
     fixedBoundaryRun parameter f (Concrete.publicDigestLoop parameter root message attempts) =

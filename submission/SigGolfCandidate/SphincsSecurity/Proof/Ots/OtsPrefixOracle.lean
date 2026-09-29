@@ -1,5 +1,4 @@
 import SigGolfCandidate.SphincsSecurity.Proof.Base.Prelude
-import SigGolfCandidate.SphincsSecurity.Proof.Scheme.HashOutputSplit
 import SigGolfCandidate.SphincsSecurity.Proof.Hypertree.FrontierOracleMask
 import SigGolfCandidate.SphincsSecurity.Proof.Ots.OtsEndpointLikelihood
 import SigGolfCandidate.SphincsSecurity.Proof.Ots.SecretProbe
