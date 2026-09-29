@@ -33,13 +33,11 @@ theorem targetCreationMultiplier_le_macro (key : SecretKey) (cache : QueryCache 
   | inr message =>
       simp only [targetCreationMultiplier, signingMacroHashCost]
       calc
-        _ ≤ (870 : ENNReal) * 1 :=
-          mul_le_mul' admissibleProbability_inv_le (freshDigestSelectionProbability_le_one key message cache)
-        _ ≤ _ := by
-          rw [mul_one]
-          exact_mod_cast (show 870 ≤ 2 ^ ftsTreeHeight by decide)
+        _ ≤ ((2 ^ ftsTreeHeight : Nat) : ENNReal) * 1 :=
+          mul_le_mul' le_rfl (freshDigestSelectionProbability_le_one key message cache)
+        _ = _ := by rw [mul_one]
 
-theorem creationBudget_update (key : SecretKey) (budget : Nat) (required : Finset IndexGroup) (stopAfter : CertificateStopRule)
+theorem creationBudget_update (key : SecretKey) (budget : Nat) (required : Finset FtsTree) (stopAfter : CertificateStopRule)
     (input : (OracleWorld + SigningSpec).Domain) (state : CertificateMonitorState) (length : Nat)
     (record : ProposalExecutionRecord input) (hbefore : CreationBudget budget state.2)
     (hmass : targetCreationMultiplier key state.1 input ≤ record.trace.hashCalls) :
