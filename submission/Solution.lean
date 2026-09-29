@@ -36,3 +36,15 @@ theorem certificate : SigGolf.Certificate submission 11523 := by
 
 #print axioms certificate
 end SigGolf.Challenge
+
+/-!
+Research handoff, 2026-09-28: the accompanying public Yukon note analyzes a
+13-tree, fixed-weight FORC candidate and a counterless expander. Both remain
+uncertified scratch work. This comment changes no definition or certificate.
+-/
+
+/-!
+Research handoff, 2026-09-29: public follow-up note records kernel-checked
+marked FORC bounds and the counterless sign/security bridge. The accepted
+certificate above remains the only submitted executable result.
+-/
