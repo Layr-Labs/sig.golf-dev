@@ -26,17 +26,16 @@ structure FtsSecretProbe where
   leafIdx : FtsLeaf
   candidate : Digest
 def FtsSecretProbe.input (parameter : PublicParameter) (probe : FtsSecretProbe) : HashInput :=
-  tweakableHashInput parameter (.ftsLeaf probe.index probe.tree probe.leafIdx.val)
+  tweakableHashInput parameter (.ftsLeaf probe.index probe.tree probe.leafIdx)
     (digestBytes probe.candidate)
 
 theorem FtsSecretProbe.input_injective (parameter : PublicParameter) :
     Function.Injective (FtsSecretProbe.input parameter) := by
   intro left right heq
-  have hparts := tweakableHashInput_injective parameter (HashDomain.ftsLeaf_inRange _ _ _)
-    (HashDomain.ftsLeaf_inRange _ _ _) heq
+  have hparts := tweakableHashInput_injective parameter (by trivial) (by trivial) heq
   have hdomain : left.index = right.index ∧ left.tree = right.tree ∧
       left.leafIdx = right.leafIdx := by
-    simpa only [HashDomain.ftsLeaf.injEq, Fin.val_inj] using hparts.1
+    simpa only [HashDomain.ftsLeaf.injEq] using hparts.1
   have hcandidate : left.candidate = right.candidate := digestBytes_injective hparts.2
   cases left
   cases right

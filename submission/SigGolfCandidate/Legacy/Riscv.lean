@@ -1,4 +1,5 @@
 import SigGolfCandidate.Legacy.Oracle
+import SigGolf.Riscv
 import RiscvZkvm.Rv64.Execution
 import RiscvZkvm.Interpreter.Decode
 
@@ -61,15 +62,14 @@ def accessValid (address : BitVec 64) (bytes : Nat) : Bool :=
   rangeValid address bytes && decide (address.toNat % bytes = 0)
 
 /-- Extensions needed to cover the complete RV64IM word-operation family. -/
-inductive WordOp where
-  | add | sub | sll | srl | sra | mul | div | divu | rem | remu
-  deriving DecidableEq, Repr
-
-inductive Instruction where
-  | base (instruction : Instr)
-  | word (op : WordOp) (rd rs1 rs2 : Reg)
-  | sraiw (rd rs1 : Reg) (shift : BitVec 5)
-  deriving Repr
+abbrev WordOp := SigGolf.Riscv.WordOp
+abbrev Instruction := SigGolf.Riscv.Instruction
+namespace WordOp
+export SigGolf.Riscv.WordOp (add sub sll srl sra mul div divu rem remu)
+end WordOp
+namespace Instruction
+export SigGolf.Riscv.Instruction (base word sraiw)
+end Instruction
 
 /-- The program contains actual 32-bit encodings, never assembler pseudo-instructions. -/
 def decodeInstruction (word : BitVec 32) : Option Instruction := do
