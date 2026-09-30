@@ -212,7 +212,7 @@ def signLayers (S cache : List Byte) (idx : Nat) :
       | none => pure none
       | some rest => pure (some (rest ++ [(c, vals, path)]))
 
-/-- Signature bytes: `rho | FTS items | five layer bodies | 14-byte counter tail`. -/
+/-- Signature bytes: `rho | FTS items | five layer bodies | 13-byte counter tail`. -/
 def serialize (rho : Val) (fts : List Val) (lays : List LayerSig) : List Byte :=
   rho ++ fts.flatten ++
     (lays.map fun l => l.2.1.flatten ++ l.2.2.flatten).flatten ++
@@ -235,9 +235,9 @@ def signList (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) 
   else pure none
 
 def signRef (sk : Bytes 32) (cache : Cache) (m : Bytes 32) :
-    OracleComp HashSpec (Option (Bytes 6062)) := do
+    OracleComp HashSpec (Option (Bytes 6061)) := do
   let r ← signList (toList sk) (toList cache) (toList m)
-  pure (r.map (ofList 6062))
+  pure (r.map (ofList 6061))
 
 /-! ## Signature and witness layout -/
 
@@ -335,7 +335,7 @@ def expandList (m sig : List Byte) : OracleComp HashSpec (Option (List Byte)) :=
   pure (expandOf sig N)
 
 /-- `ref.expand(pk, m, sig)` (the public key is unused). -/
-def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6062) :
+def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6061) :
     OracleComp HashSpec (Option (Bytes 6348)) := do
   let r ← expandList (toList m) (toList sig)
   pure (r.map (ofList 6348))
@@ -353,7 +353,7 @@ def witSib (w : List Byte) (lay l : Nat) : Val := slice w (witLayerOff lay + 672
 def witPath (w : List Byte) (lay : Nat) : List Val := (List.range (height lay)).map (witSib w lay)
 def witCounter (w : List Byte) (lay : Nat) : Nat := leNat (slice w (witCounters + 4 * lay) 4)
 
-/-- The counter range check: every `c_lay < 2^22`. -/
+/-- The counter range check: every `c_lay < 2^20`. -/
 def countersOk (w : List Byte) : Bool := (List.range nLayers).all fun lay => witCounter w lay < cMax
 
 /-- `ref.fold` (TreeFold / FtsFold): levels `lam = 0 .. |path|-1` with node
@@ -511,7 +511,7 @@ def verifyRef (m : Bytes 32) (pk : Bytes 16) (w : Bytes 6348) : OracleComp HashS
   verifyList (toList m) (toList pk) (toList w)
 
 /-- `ref.verify`: expand, then verify the witness (`false` if expand fails). -/
-def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6062) : OracleComp HashSpec Bool := do
+def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6061) : OracleComp HashSpec Bool := do
   match ← expandRef m pk sig with
   | none => pure false
   | some w => verifyRef m pk w

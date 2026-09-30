@@ -6,7 +6,7 @@ import SigGolfCandidate.SphincsSecurity.Scheme
 The signer's counter search succeeds on a digest whose 42 three-bit digits sum to `T = 181` and
 whose two padding bits are clear, so the search's failure probability is governed by how many of
 the `2^128` digests that is. The count is the coefficient of `z^181` in `(1 + z + ... + z^7)^42`,
-about `2^117.002`: at least one digest in `codeShare = 2397`.
+about `2^117.002`: at least one digest in the conservative `codeShare = 2143` bound.
 
 Counting it is one identity and one division. Packing the polynomial into a single natural number
 in base `2^128`, which is above every coefficient, turns the product of the `42` factors into a
@@ -101,7 +101,7 @@ theorem codeCount_target :
   exact (digit_of_sum base (by decide) codeCount codeCount_lt_base 295 targetSum (by decide)).symm
 
 /-- One digest in `codeShare` or more is a codeword. -/
-def codeShare : Nat := 2397
+def codeShare : Nat := 2143
 
 theorem digests_le_codeShare_mul_codeCount : 2 ^ 128 ≤ codeShare * codeCount targetSum := by
   rw [codeCount_target, weight_eq]

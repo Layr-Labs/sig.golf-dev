@@ -31,7 +31,7 @@ namespace SphincsSecurity.Completeness
 
 open Concrete
 
--- the attempt limits are `2 ^ 20` and `2 ^ 22`; unfolding them unfolds the loops that many times
+-- both attempt limits are `2 ^ 20`; unfolding them unfolds the loops that many times
 attribute [local irreducible] digestAttemptLimit encodingAttemptLimit
 
 variable (f : QueryImpl HashSpec Id)

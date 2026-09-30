@@ -52,11 +52,11 @@ theorem ctr_word4 (wl : List Byte) (hwl : wl.length = 6348) (s : MachineState) (
 theorem ctr_iff (wl : List Byte) (hwl : wl.length = 6348) (s : MachineState) (hW : WitOK wl s) :
     ctrE'.eval s = 0 ↔ countersOk wl = true := by
   have e : ctrE'.eval s = (ctrX.eval s ||| (ctrX.eval s <<< ((BitVec.ofNat 64 32).toNat % 64))) >>>
-      ((BitVec.ofNat 64 54).toNat % 64) := rfl
+      ((BitVec.ofNat 64 52).toNat % 64) := rfl
   have ex : ctrX.eval s = s.getMem (BitVec.ofNat 64 8376) ||| s.getMem (BitVec.ofNat 64 8384) |||
       (extractWord32 (s.getMem (BitVec.ofNat 64 8392)) 0).zeroExtend 64 := rfl
   have hx := (ctrX.eval s).isLt
-  have hsh : ctrE'.eval s = 0 ↔ (ctrX.eval s).toNat % 2 ^ 32 < 2 ^ 22 ∧ (ctrX.eval s).toNat / 2 ^ 32 < 2 ^ 22 := by
+  have hsh : ctrE'.eval s = 0 ↔ (ctrX.eval s).toNat % 2 ^ 32 < 2 ^ 20 ∧ (ctrX.eval s).toNat / 2 ^ 32 < 2 ^ 20 := by
     rw [e, ← ctr_shift_iff _ hx]
     constructor
     · intro h

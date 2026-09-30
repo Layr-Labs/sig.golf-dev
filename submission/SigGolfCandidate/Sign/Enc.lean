@@ -6,7 +6,7 @@ import SigGolfCandidate.Verify.Swar
 # `sign`, the counter search of a layer (`enc_loop`, instructions 294 .. 329)
 
 `encLoop_sim` : from `enc_loop` with counter `c`, the machine refines
-`searchCounter lay tau e M c (2^22 - c)`.
+`searchCounter lay tau e M c (2^20 - c)`.
 -/
 
 set_option linter.unusedSimpArgs false
@@ -158,7 +158,7 @@ structure EncMem (lay tau e : Nat) (M : Val) (u : MachineState) : Prop where
   ebM : u.readWords (BitVec.ofNat 64 0x120) 2 = wordsOf M
   eb56 : u.getMem (BitVec.ofNat 64 0x138) = 0
   x5 : u.getReg .x5 = 0
-  x7 : u.getReg .x7 = BitVec.ofNat 64 (2 ^ 22)
+  x7 : u.getReg .x7 = BitVec.ofNat 64 (2 ^ 20)
   x26 : u.getReg .x26 = swM1
   x27 : u.getReg .x27 = swM2
 
@@ -167,11 +167,11 @@ def encW (a : Nat) : Prop := a = 0x130 ∨ (0x140 ≤ a ∧ a < 0x160)
 def encRegs : List Reg := [.x1, .x2, .x3, .x6, .x10, .x11, .x12, .x28, .x29]
 
 def EncInv (u : MachineState) (c : Nat) (t : MachineState) : Prop :=
-  t.pc = pcOf 346 ∧ t.getReg .x6 = BitVec.ofNat 64 c ∧ c < 2 ^ 22 ∧ RegsEq u t encRegs ∧ Frame u t encW
+  t.pc = pcOf 346 ∧ t.getReg .x6 = BitVec.ofNat 64 c ∧ c < 2 ^ 20 ∧ RegsEq u t encRegs ∧ Frame u t encW
 
 def EncPost (u : MachineState) : Option (Nat × List Nat) → MachineState → Prop
   | none, t => t.pc = pcOf 381 ∧ t.getReg .x5 = 1 ∧ t.getReg .x10 = 1
-  | some (c, x), t => t.pc = pcOf 382 ∧ t.getReg .x6 = BitVec.ofNat 64 c ∧ c < 2 ^ 22 ∧
+  | some (c, x), t => t.pc = pcOf 382 ∧ t.getReg .x6 = BitVec.ofNat 64 c ∧ c < 2 ^ 20 ∧
       (∃ d0 d1, d0 < 2 ^ 63 ∧ d1 < 2 ^ 63 ∧ x = digitsOfWord d0 ++ digitsOfWord d1 ∧ x.sum = 181 ∧
         t.getReg .x1 = BitVec.ofNat 64 d0 ∧ t.getReg .x2 = BitVec.ofNat 64 d1) ∧
       RegsEq u t encRegs ∧ Frame u t encW
@@ -337,16 +337,16 @@ theorem encTrial (lay tau e : Nat) (M : Val) (u : MachineState) (hmem : EncMem l
       (by rw [r5.get .x6, x36]) ru5 fu5))).mono (by omega) (fun _ _ h => h)
 
 /-- After a failing trial (instruction 325): `c += 1`, back to the loop or fail. -/
-theorem encNext (u : MachineState) (hx7 : u.getReg .x7 = BitVec.ofNat 64 (2 ^ 22)) (c : Nat)
-    (hc : c < 2 ^ 22) (t : MachineState) (tpc : t.pc = pcOf 377) (t6 : t.getReg .x6 = BitVec.ofNat 64 c)
+theorem encNext (u : MachineState) (hx7 : u.getReg .x7 = BitVec.ofNat 64 (2 ^ 20)) (c : Nat)
+    (hc : c < 2 ^ 20) (t : MachineState) (tpc : t.pc = pcOf 377) (t6 : t.getReg .x6 = BitVec.ofNat 64 c)
     (tregs : RegsEq u t encRegs) (tframe : Frame u t encW) :
-    ∃ t', Steps image t 2 2 t' ∧ (c + 1 < 2 ^ 22 → EncInv u (c + 1) t') ∧
-      (c + 1 = 2 ^ 22 → t'.pc = pcOf 379) := by
+    ∃ t', Steps image t 2 2 t' ∧ (c + 1 < 2 ^ 20 → EncInv u (c + 1) t') ∧
+      (c + 1 = 2 ^ 20 → t'.pc = pcOf 379) := by
   have hs := symRun_sound blk377 codeAt_377 t tpc (by simp only [blk377.res, rv_simp])
   have r1 : RegsEq t (blk377.res.toState t) [.x6] := by
     intro r hr; rw [Result.toState_getReg]
     cases r <;> first | exact absurd (by decide) hr | rfl
-  have t7 : t.getReg .x7 = BitVec.ofNat 64 (2 ^ 22) := by rw [tregs.get .x7, hx7]
+  have t7 : t.getReg .x7 = BitVec.ofNat 64 (2 ^ 20) := by rw [tregs.get .x7, hx7]
   refine ⟨_, hs, ?_, ?_⟩
   · intro h
     refine ⟨?_, ?_, h, (tregs.trans r1).mono (by decide), ?_⟩
@@ -361,7 +361,7 @@ theorem encNext (u : MachineState) (hx7 : u.getReg .x7 = BitVec.ofNat 64 (2 ^ 22
 
 /-- **Counter search** of a layer, from counter `c` with `fuel + 1` trials left. -/
 theorem encLoop_sim (lay tau e : Nat) (M : Val) (u : MachineState) (hmem : EncMem lay tau e M u) :
-    ∀ fuel c t, c + (fuel + 1) = 2 ^ 22 → EncInv u c t →
+    ∀ fuel c t, c + (fuel + 1) = 2 ^ 20 → EncInv u c t →
       Sim image t ((fuel + 1) * 40 + 2) (searchCounter lay tau e M c (fuel + 1)) (EncPost u) := by
   intro fuel
   induction fuel with

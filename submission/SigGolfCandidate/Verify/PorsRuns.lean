@@ -267,7 +267,7 @@ def dgK : List (Reg × Word) := gkD ++ [(.x10, 0x20), (.x11, 64), (.x12, 0x160),
 
 /-- The counters: two doublewords and a word at `WIT + 6328`. -/
 def ctrX : E := .bin .or (.bin .or (ldE 8376) (ldE 8384)) (.un (.ld .wu 0) (ldE 8392))
-def ctrE' : E := .bin .srl (.bin .or ctrX (.bin .sll ctrX (cw 32))) (cw 54)
+def ctrE' : E := .bin .srl (.bin .or ctrX (.bin .sll ctrX (cw 32))) (cw 52)
 
 def specStartOk : Spec :=
   ⟨[], [(⟨none, BitVec.ofNat 64 56⟩, ldE 2056), (⟨none, BitVec.ofNat 64 48⟩, ldE 2048),

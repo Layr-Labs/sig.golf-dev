@@ -104,7 +104,7 @@ def seg209 : List (BitVec 32) := seg209Packed
 def seg215 : List (BitVec 32) := seg215Packed
 /-- instructions 220 .. 225: copy body 4. -/
 def seg220 : List (BitVec 32) := seg220Packed
-/-- instructions 226 .. 251: load and check the 14-byte counter tail, then unpack five counters. -/
+/-- instructions 226 .. 251: load and check the 13-byte counter tail, then unpack five counters. -/
 def seg226 : List (BitVec 32) := seg226Packed
 /- The definitions below for PCs 231..280 belong to the previous interleaved
 layout. They are excluded from `L`; the live code at those PCs is inside
