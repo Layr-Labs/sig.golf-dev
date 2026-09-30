@@ -1,4 +1,4 @@
-import SigGolfCandidate.Equiv.Slices
+import SigGolfCandidate.Equiv.Codec
 import SigGolfCandidate.Equiv.Tree
 
 /-!
