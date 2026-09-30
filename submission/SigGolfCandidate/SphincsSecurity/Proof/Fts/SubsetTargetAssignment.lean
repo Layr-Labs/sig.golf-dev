@@ -6,15 +6,15 @@ open _root_.OracleComp OracleSpec ENNReal
 attribute [local instance] Classical.propDecidable
 set_option backward.isDefEq.respectTransparency false
 
-noncomputable def sourceSubsetMatch (target source : FewTimeView) (required : Finset IndexGroup) : Nat :=
+noncomputable def sourceSubsetMatch (target source : FewTimeView) (required : Finset FtsTree) : Nat :=
   ∏ tree ∈ required, sourceTreeMatch target source tree
 
-theorem sourceTreeMatch_mul_self (target source : FewTimeView) (tree : IndexGroup) :
+theorem sourceTreeMatch_mul_self (target source : FewTimeView) (tree : FtsTree) :
     sourceTreeMatch target source tree * sourceTreeMatch target source tree = sourceTreeMatch target source tree := by
   unfold sourceTreeMatch
   split_ifs <;> decide
 
-theorem sourceSubsetMatch_mul (target source : FewTimeView) (left right : Finset IndexGroup) :
+theorem sourceSubsetMatch_mul (target source : FewTimeView) (left right : Finset FtsTree) :
     sourceSubsetMatch target source left * sourceSubsetMatch target source right =
       sourceSubsetMatch target source (left ∪ right) := by
   induction left using Finset.induction_on with
