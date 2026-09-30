@@ -5,47 +5,47 @@ namespace SigGolfCandidate.Sign
 open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
 set_option maxRecDepth 16384
 set_option linter.unusedSimpArgs false
-theorem blk2844_cycles : blk2844.res.cycles = 43 := by rfl
-theorem blk2844_steps : blk2844.res.steps = 43 := by rfl
-theorem blk2844_pc (t : MachineState) : (blk2844.res.toState t).pc = pcOf 65 := by
-  simp only [blk2844.res, rv_simp]
-theorem blk2844_x6 (t : MachineState) : (blk2844.res.toState t).getReg .x6 = 0 := by
-  simp only [blk2844.res, rv_simp]
-theorem blk2844_word0 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x780) =
+theorem blk754_cycles : blk754.res.cycles = 43 := by rfl
+theorem blk754_steps : blk754.res.steps = 43 := by rfl
+theorem blk754_pc (t : MachineState) : (blk754.res.toState t).pc = pcOf 65 := by
+  simp only [blk754.res, rv_simp]
+theorem blk754_x6 (t : MachineState) : (blk754.res.toState t).getReg .x6 = 0 := by
+  simp only [blk754.res, rv_simp]
+theorem blk754_word0 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x780) =
       rndW0 (t.getMem (BitVec.ofNat 64 0x640)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW0, ↓reduceIte]
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW0, ↓reduceIte]
   norm_num
-theorem blk2844_word1 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x788) = rndW1 (t.getMem (BitVec.ofNat 64 0x640)) (t.getMem (BitVec.ofNat 64 0x648)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW1, ↓reduceIte]
+theorem blk754_word1 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x788) = rndW1 (t.getMem (BitVec.ofNat 64 0x640)) (t.getMem (BitVec.ofNat 64 0x648)) := by
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW1, ↓reduceIte]
   norm_num
-theorem blk2844_word2 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x790) = rndW1 (t.getMem (BitVec.ofNat 64 0x648)) (t.getMem (BitVec.ofNat 64 0x650)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW1, ↓reduceIte]
+theorem blk754_word2 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x790) = rndW1 (t.getMem (BitVec.ofNat 64 0x648)) (t.getMem (BitVec.ofNat 64 0x650)) := by
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW1, ↓reduceIte]
   norm_num
-theorem blk2844_word3 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x798) = rndW3 (t.getMem (BitVec.ofNat 64 0x650)) (t.getMem (BitVec.ofNat 64 0x658)) (t.getMem (BitVec.ofNat 64 0x660)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW3, ↓reduceIte]
+theorem blk754_word3 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x798) = rndW3 (t.getMem (BitVec.ofNat 64 0x650)) (t.getMem (BitVec.ofNat 64 0x658)) (t.getMem (BitVec.ofNat 64 0x660)) := by
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW3, ↓reduceIte]
   norm_num
-theorem blk2844_word4 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x7a0) = rndW4 (t.getMem (BitVec.ofNat 64 0x660)) (t.getMem (BitVec.ofNat 64 0x668)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW4, ↓reduceIte]
+theorem blk754_word4 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x7a0) = rndW4 (t.getMem (BitVec.ofNat 64 0x660)) (t.getMem (BitVec.ofNat 64 0x668)) := by
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW4, ↓reduceIte]
   norm_num
-theorem blk2844_word5 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x7a8) = rndW4 (t.getMem (BitVec.ofNat 64 0x668)) (t.getMem (BitVec.ofNat 64 0x670)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW4, ↓reduceIte]
+theorem blk754_word5 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x7a8) = rndW4 (t.getMem (BitVec.ofNat 64 0x668)) (t.getMem (BitVec.ofNat 64 0x670)) := by
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW4, ↓reduceIte]
   norm_num
-theorem blk2844_word6 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x7b0) = rndW4 (t.getMem (BitVec.ofNat 64 0x670)) (t.getMem (BitVec.ofNat 64 0x678)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW4, ↓reduceIte]
+theorem blk754_word6 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x7b0) = rndW4 (t.getMem (BitVec.ofNat 64 0x670)) (t.getMem (BitVec.ofNat 64 0x678)) := by
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW4, ↓reduceIte]
   norm_num
-theorem blk2844_word7 (t : MachineState) :
-    (blk2844.res.toState t).getMem (BitVec.ofNat 64 0x7b8) = rndW7 (t.getMem (BitVec.ofNat 64 0x678)) := by
-  simp (config := { decide := true }) only [blk2844.res, rv_simp, rndW7, ↓reduceIte]
+theorem blk754_word7 (t : MachineState) :
+    (blk754.res.toState t).getMem (BitVec.ofNat 64 0x7b8) = rndW7 (t.getMem (BitVec.ofNat 64 0x678)) := by
+  simp (config := { decide := true }) only [blk754.res, rv_simp, rndW7, ↓reduceIte]
   norm_num
-theorem blk2844_words (t : MachineState) :
-    (blk2844.res.toState t).readWords (BitVec.ofNat 64 0x780) 8 =
+theorem blk754_words (t : MachineState) :
+    (blk754.res.toState t).readWords (BitVec.ofNat 64 0x780) 8 =
       rndPackWords (t.getMem (BitVec.ofNat 64 0x640)) (t.getMem (BitVec.ofNat 64 0x648))
         (t.getMem (BitVec.ofNat 64 0x650)) (t.getMem (BitVec.ofNat 64 0x658))
         (t.getMem (BitVec.ofNat 64 0x660)) (t.getMem (BitVec.ofNat 64 0x668))
@@ -54,28 +54,28 @@ theorem blk2844_words (t : MachineState) :
     readWords_ofNat_succ, readWords_ofNat_succ, readWords_ofNat_succ,
     readWords_ofNat_succ, readWords_ofNat_succ]
   simp only [rndPackWords]
-  rw [blk2844_word0, blk2844_word1, blk2844_word2, blk2844_word3, blk2844_word4, blk2844_word5, blk2844_word6, blk2844_word7]
+  rw [blk754_word0, blk754_word1, blk754_word2, blk754_word3, blk754_word4, blk754_word5, blk754_word6, blk754_word7]
   rfl
 
-theorem blk2844_frame (t : MachineState) :
-    Frame t (blk2844.res.toState t) (fun a => 0x780 ≤ a ∧ a < 0x7c0) := by
+theorem blk754_frame (t : MachineState) :
+    Frame t (blk754.res.toState t) (fun a => 0x780 ≤ a ∧ a < 0x7c0) := by
   apply frame_toState
   intro x hx hW
-  simp only [blk2844.res, rv_simp, List.forall_mem_cons, List.not_mem_nil,
+  simp only [blk754.res, rv_simp, List.forall_mem_cons, List.not_mem_nil,
     IsEmpty.forall_iff, implies_true, and_true, ne_eq, ofNat_eq_iff]
   omega
 
-theorem blk2844_regs (t : MachineState) :
-    RegsEq t (blk2844.res.toState t)
+theorem blk754_regs (t : MachineState) :
+    RegsEq t (blk754.res.toState t)
       [.x1, .x2, .x3, .x4, .x6, .x8, .x9, .x10, .x11, .x12, .x13] := by
   intro r hr
   rw [Result.toState_getReg]
   cases r <;> first | exact absurd (by decide) hr | rfl
-theorem blk2844_rnd (t : MachineState) (S m : List Byte)
+theorem blk754_rnd (t : MachineState) (S m : List Byte)
     (hS : S.length = 32) (hm : m.length = 32)
     (rs : t.readWords (BitVec.ofNat 64 0x640) 4 = wordsOf S)
     (rm : t.readWords (BitVec.ofNat 64 0x660) 4 = wordsOf m) :
-    (blk2844.res.toState t).readWords (BitVec.ofNat 64 0x780) 8 =
+    (blk754.res.toState t).readWords (BitVec.ofNat 64 0x780) 8 =
       wordsOf (rndInput S m 0) := by
   let s0 := t.getMem (BitVec.ofNat 64 0x640)
   let s1 := t.getMem (BitVec.ofNat 64 0x648)
@@ -95,7 +95,7 @@ theorem blk2844_rnd (t : MachineState) (S m : List Byte)
     rfl
   have hsbytes := eq_of_words4 S hS s0 s1 s2 s3 hsw
   have hmbytes := eq_of_words4 m hm m0 m1 m2 m3 hmw
-  rw [blk2844_words]
+  rw [blk754_words]
   simpa [hsbytes, hmbytes] using (words_rndInput_packed s0 s1 s2 s3 m0 m1 m2 m3).symm
 
 theorem rndW7a_replace1 (w m3 : Word) (a : Nat)

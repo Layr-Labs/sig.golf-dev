@@ -46,19 +46,17 @@ theorem leNat_slice_dv (d : Digest) :
   rw [Nat.div_lt_iff_lt_mul (by norm_num)]
   norm_num at this ⊢; omega
 
-theorem digitOffset_lt (i : SphincsSecurity.ChainIndex) : i.val < 21 →
-    SphincsSecurity.TargetSum.digitOffset i = 3 * i.val := by
-  intro h
-  simp [SphincsSecurity.TargetSum.digitOffset, SphincsSecurity.TargetSum.digitsPerHalf,
-    SphincsSecurity.winternitzBits, SphincsSecurity.numChains, h]
+theorem digitOffset_eq (i : SphincsSecurity.ChainIndex) :
+    SphincsSecurity.TargetSum.digitOffset i = 4 * i.val := by
+  simp [SphincsSecurity.TargetSum.digitOffset, SphincsSecurity.winternitzBits]
 
 theorem digestEncoding_val (d : Digest) (i : SphincsSecurity.ChainIndex) :
     (SphincsSecurity.TargetSum.digestEncoding d i).val =
-      d.toNat / 2 ^ (SphincsSecurity.TargetSum.digitOffset i) % 8 := by
+      d.toNat / 2 ^ (SphincsSecurity.TargetSum.digitOffset i) % 16 := by
   simp [SphincsSecurity.TargetSum.digestEncoding, Nat.shiftRight_eq_div_pow,
     SphincsSecurity.winternitzBits]
 
-/-- The 42 digits of the reference decoder are the abstract digits. -/
+/-- The 32 digits of the reference decoder are the abstract digits. -/
 theorem digits_eq (d : Digest) :
     Ref.digitsOfWord (d.toNat % 2 ^ 64) ++ Ref.digitsOfWord (d.toNat / 2 ^ 64) =
       List.ofFn fun i => (SphincsSecurity.TargetSum.digestEncoding d i).val := by
@@ -66,58 +64,38 @@ theorem digits_eq (d : Digest) :
   apply List.ext_getElem (by simp [SphincsSecurity.numChains])
   intro i h1 h2'
   simp only [List.getElem_ofFn]
-  rw [digestEncoding_val]
-  have h2 : i < 42 := by simpa [SphincsSecurity.numChains] using h2'
-  by_cases hi : i < 21
+  rw [digestEncoding_val, digitOffset_eq]
+  have h2 : i < 32 := by simpa [SphincsSecurity.numChains] using h2'
+  by_cases hi : i < 16
   · rw [List.getElem_append_left (by simp [hi])]
     simp only [List.getElem_map, List.getElem_range]
-    rw [digitOffset_lt ⟨i, h2'⟩ hi]
-    rw [show (8 : Nat) ^ i = 2 ^ (3 * i) by rw [Nat.pow_mul]]
-    rw [show (2 : Nat) ^ 64 = 2 ^ (3 * i) * 2 ^ (64 - 3 * i) by rw [← Nat.pow_add]; congr 1; omega,
+    rw [show (16 : Nat) ^ i = 2 ^ (4 * i) by rw [Nat.pow_mul]]
+    rw [show (2 : Nat) ^ 64 = 2 ^ (4 * i) * 2 ^ (64 - 4 * i) by rw [← Nat.pow_add]; congr 1; omega,
       Nat.mod_mul_right_div_self, Nat.mod_mod_of_dvd _ (Nat.pow_dvd_pow_iff_le_right'.mpr
-        (show 3 ≤ 64 - 3 * i by omega) |> fun h => by
-          rw [show (8 : Nat) = 2 ^ 3 by norm_num]; exact h)]
+        (show 4 ≤ 64 - 4 * i by omega) |> fun h => by
+          rw [show (16 : Nat) = 2 ^ 4 by norm_num]; exact h)]
   · rw [List.getElem_append_right (by simp; omega)]
     simp only [List.getElem_map, List.getElem_range, List.length_map, List.length_range]
-    have ho : SphincsSecurity.TargetSum.digitOffset ⟨i, h2'⟩ = 64 + 3 * (i - 21) := by
-      simp [SphincsSecurity.TargetSum.digitOffset, SphincsSecurity.TargetSum.digitsPerHalf,
-        SphincsSecurity.winternitzBits, SphincsSecurity.numChains, hi]; omega
-    rw [ho, Nat.pow_add, ← Nat.div_div_eq_div_mul, show (8 : Nat) ^ (i - 21) = 2 ^ (3 * (i - 21)) by
-      rw [Nat.pow_mul]]
-
-theorem bit63 (d : Digest) : d.getLsbD 63 = false ↔ d.toNat % 2 ^ 64 < 2 ^ 63 := by
-  rw [BitVec.getLsbD, Nat.testBit_eq_decide_div_mod_eq]
-  simp only [decide_eq_false_iff_not]
-  norm_num
-  omega
-
-theorem bit127 (d : Digest) : d.getLsbD 127 = false ↔ d.toNat / 2 ^ 64 < 2 ^ 63 := by
-  have h := d.isLt
-  simp only [SphincsSecurity.digestBits] at h
-  rw [BitVec.getLsbD, Nat.testBit_eq_decide_div_mod_eq]
-  simp only [decide_eq_false_iff_not]
-  norm_num at h ⊢
-  omega
+    rw [show 4 * i = 64 + 4 * (i - 16) by omega, Nat.pow_add, ← Nat.div_div_eq_div_mul,
+      show (16 : Nat) ^ (i - 16) = 2 ^ (4 * (i - 16)) by rw [Nat.pow_mul]]
 
 /-- **Target-sum decoding**: the reference decoder is the abstract one. -/
 theorem decodeDigits_dv (d : Digest) :
     Ref.decodeDigits (dv d) =
       (SphincsSecurity.TargetSum.decodeDigest d).map (fun enc => List.ofFn fun i => (enc i).val) := by
-  unfold Ref.decodeDigits SphincsSecurity.TargetSum.decodeDigest
+  rw [SphincsSecurity.TargetSum.decodeDigest]
+  unfold Ref.decodeDigits
   have h0 : Ref.slice (dv d) 0 8 = (dv d).take 8 := by simp [Ref.slice]
   simp only [h0, leNat_take_dv d 8 (by omega), leNat_slice_dv]
   simp only [show 8 * 8 = 64 from rfl]
   rw [digits_eq]
-  by_cases hb : d.toNat % 2 ^ 64 < 2 ^ 63 ∧ d.toNat / 2 ^ 64 < 2 ^ 63
-  · rw [if_pos hb]
-    have hs : (List.ofFn fun i => (SphincsSecurity.TargetSum.digestEncoding d i).val).sum =
-        SphincsSecurity.TargetSum.sum (SphincsSecurity.TargetSum.digestEncoding d) := by
-      rw [List.sum_ofFn]; rfl
-    rw [hs]
-    by_cases hv : SphincsSecurity.TargetSum.Valid (SphincsSecurity.TargetSum.digestEncoding d)
-    · rw [if_pos (by exact hv), if_pos ⟨(bit63 d).mpr hb.1, (bit127 d).mpr hb.2, hv⟩]; rfl
-    · rw [if_neg (by exact hv), if_neg (fun h => hv h.2.2)]; rfl
-  · rw [if_neg hb, if_neg (fun h => hb ⟨(bit63 d).mp h.1, (bit127 d).mp h.2.1⟩)]; rfl
+  have hs : (List.ofFn fun i => (SphincsSecurity.TargetSum.digestEncoding d i).val).sum =
+      SphincsSecurity.TargetSum.sum (SphincsSecurity.TargetSum.digestEncoding d) := by
+    rw [List.sum_ofFn]; rfl
+  rw [hs]
+  by_cases hv : SphincsSecurity.TargetSum.Valid (SphincsSecurity.TargetSum.digestEncoding d)
+  · rw [if_pos (by exact hv), if_pos hv]; rfl
+  · rw [if_neg (by exact hv), if_neg hv]; rfl
 
 /-! ## The message digest (PORS+FP: the full 256-bit answer) -/
 

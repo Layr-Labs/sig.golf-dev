@@ -7,10 +7,10 @@ import SigGolfCandidate.SphincsSecurity.Completeness.Encoding
 
 `sign` first checks the cache's MAC; for the cache key generation wrote, that query is a cache hit
 returning the stored tag, so the check passes. Then it runs the randomizer search, builds the PORS tree
-(one tree, secrets derived in pairs), and signs the five layers from the bottom up: layers `4, ..., 1` each a counter search followed
+(one tree, secrets derived in pairs), and signs the six layers from the bottom up: layers `5, ..., 1` each a counter search followed
 by its tree built once, and the top layer a counter search followed by its chains and the path read
 from the cache. It returns `none` as soon as a search runs out. A union bound through that structure
-charges the failure to the six searches. The tree builds and cache reads never fail and do not matter
+charges the failure to the seven searches. The tree builds and cache reads never fail and do not matter
 for the probability except through what they cache.
 
 Each counter search needs its own inputs uncached when it starts; `EncodingFresh` carries that from
@@ -115,7 +115,7 @@ theorem probEvent_signLayers_none (sk : Seeded.SecretKey) (index : Index)
             _ = ((r + 1 : Nat) : ℝ≥0∞) * encodingBound := by push_cast; ring
       next hlayer => exact absurd (Nat.lt_of_succ_le hrem) hlayer
 
-/-- After the digest loop: the PORS tree never fails, and the five layers fail only through their
+/-- After the digest loop: the PORS tree never fails, and the six layers fail only through their
 counter searches. -/
 theorem probEvent_signFrom_none (sk : Seeded.SecretKey) (index : Index)
     (topNode : Nat → Nat → OracleComp HashSpec Digest) (randomness : Randomness)
@@ -141,7 +141,7 @@ theorem probEvent_signFrom_none (sk : Seeded.SecretKey) (index : Index)
     exact probEvent_signLayers_none sk index topNode numLayers le_rfl (table ftsTreeHeight 0) c1
       (h1.mono fun _ _ => trivial)
 
-/-- After the MAC check, signing fails only if the randomizer search or one of the five counter
+/-- After the MAC check, signing fails only if the randomizer search or one of the six counter
 searches does. -/
 theorem probEvent_signChecked_none (sk : Seeded.SecretKey) (topCache : TopCache) (message : Message)
     (cache : QueryCache HashSpec)
@@ -166,7 +166,7 @@ theorem probEvent_signChecked_none (sk : Seeded.SecretKey) (topCache : TopCache)
       (by rw [digestAttemptLimit]; omega) (by simp) (fun s _ _ => hrand s) (fun ρ _ => hmsg ρ)) le_rfl
 
 /-- When the cache's MAC is already cached (key generation queried it), the check is a cache hit that
-passes, and signing fails only if the randomizer search or one of the five counter searches does. -/
+passes, and signing fails only if the randomizer search or one of the six counter searches does. -/
 theorem probEvent_sign_none (sk : Seeded.SecretKey) (topCache : TopCache) (message : Message)
     (cache : QueryCache HashSpec)
     (hmac : cache (macHashInput sk.parameter sk.seed topCache.region) = some topCache.tag)

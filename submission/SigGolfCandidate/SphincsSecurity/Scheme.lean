@@ -5,7 +5,7 @@ import VCVio.OracleComp.QueryTracking.RandomOracle.Simulation
 /-!
 # SPHINCS+ scheme
 
-Parameters, serialized hash inputs, key generation, signing, and verification for the instance defined in `doc/sphincs/main.tex`, with the changes of the SPHINCS-golf variant: five layers of heights `(11,6,6,6,5)`, target sum `181`, paired secret derivations (one query yields two secrets), a top tree cached by key generation (masked, and authenticated by a MAC keyed with the master seed), no public-parameter derivation (`P = 0`), a message digest that does not bind the root, a verifier that rejects counters at or above `C_max`, and a signer that builds every tree it touches exactly once, in the query order of the reference implementation.
+Parameters, serialized hash inputs, key generation, signing, and verification for the instance defined in `doc/sphincs/main.tex`, with the changes of the SPHINCS-golf variant: six layers of heights `(11,5,5,5,4,4)`, target sum `312`, paired secret derivations (one query yields two secrets), a top tree cached by key generation (masked, and authenticated by a MAC keyed with the master seed), no public-parameter derivation (`P = 0`), a message digest that does not bind the root, a verifier that rejects counters at or above `C_max`, and a signer that builds every tree it touches exactly once, in the query order of the reference implementation.
 
 The few-time signature is PORS+FP (`work/design/SPEC-pors.md`, reference `work/py-pors/ref.py`): one Merkle
 tree of height `14` per instance `idx`, the full 256-bit digest split into `idx` (34 bits) and `k = 15`
@@ -28,11 +28,11 @@ def messageBits : Nat := 256
 def publicParameterBits : Nat := 128
 def randomnessBits : Nat := 128
 def counterBits : Nat := 32
-def winternitzBits : Nat := 3
+def winternitzBits : Nat := 4
 def chainLength : Nat := 2 ^ winternitzBits
-def numChains : Nat := 42
-def targetSum : Nat := 181
-def numLayers : Nat := 5
+def numChains : Nat := 32
+def targetSum : Nat := 312
+def numLayers : Nat := 6
 def totalHeight : Nat := 34
 /-- The tallest layer, the top one, `h_0 = 11`, which bounds every layer's leaf index. -/
 def maxLayerHeight : Nat := 11
@@ -109,9 +109,9 @@ def unpairChains {α : Type} (pairs : ChainPair → α × α) (chainIdx : ChainI
 def unpairFtsLeaves {α : Type} (pairs : FtsPair → α × α) (leaf : FtsLeaf) : α :=
   if leaf.val % 2 = 0 then (pairs (ftsPairOf leaf)).1 else (pairs (ftsPairOf leaf)).2
 
-/-- The `d` Merkle heights, `(h_0, ..., h_4) = (11, 6, 6, 6, 5)`. Layer `0` carries the public key; its
+/-- The `d` Merkle heights, `(h_0, ..., h_5) = (11, 5, 5, 5, 4, 4)`. Layer `0` carries the public key; its
 tree is built by key generation and cached. -/
-def layerHeight (lay : Layer) : Nat := if lay.val = 0 then maxLayerHeight else if lay.val < 4 then 6 else 5
+def layerHeight (lay : Layer) : Nat := if lay.val = 0 then maxLayerHeight else if lay.val < 4 then 5 else 4
 
 def topLayer : Layer := ⟨0, by decide⟩
 def bottomLayer : Layer := ⟨numLayers - 1, by decide⟩
@@ -181,7 +181,7 @@ structure FtsSignature where
   segments : Fin ftsSegments → Segment
 deriving DecidableEq
 
-/-- The randomizer, the PORS opening and five layer signatures. -/
+/-- The randomizer, the PORS opening and six layer signatures. -/
 structure Signature where
   randomness : Randomness
   fts : FtsSignature
@@ -309,7 +309,7 @@ def macHashInput (parameter : PublicParameter) (seed : MasterSeed) (region : Top
 
 /-! ### The target-sum code
 
-`v = 42` chunks of `w = 3` bits, 21 in each half of the digest, one pinned bit per half, and the code is the words of digit sum `T = 181`. Two distinct words of equal sum are incomparable, which is what removes the Winternitz checksum and the reason why we need the counter. -/
+`v = 32` chunks of `w = 4` bits, 16 in each half of the digest, no padding bits, and the code is the words of digit sum `T = 312`. Two distinct words of equal sum are incomparable, which is what removes the Winternitz checksum and the reason why we need the counter. -/
 
 namespace TargetSum
 
@@ -322,21 +322,23 @@ def Valid (x : Encoding) : Prop := sum x = targetSum
 instance : DecidablePred Valid :=
   fun x => inferInstanceAs (Decidable (sum x = targetSum))
 
-/-- `v / 2 = 21` digits in each half of the digest. -/
+/-- `v / 2 = 16` digits in each half of the digest. -/
 def digitsPerHalf : Nat := numChains / 2
 
-/-- Offset of a three-bit digit, skipping padding bits 63 and 127. -/
+/-- Offset of a four-bit digit: the digits tile the digest with no padding. -/
 def digitOffset (i : ChainIndex) : Nat :=
-  winternitzBits * i.val + if i.val < digitsPerHalf then 0 else 1
+  winternitzBits * i.val
 
-/-- `x_i`, the three bits of the digest at the digit's offset. -/
+/-- `x_i`, the four bits of the digest at the digit's offset. -/
 def digestEncoding (digest : Digest) : Encoding :=
   fun i => (digest.extractLsb' (digitOffset i) winternitzBits).toFin
 
-/-- Decode the concrete little-endian layout: 21 three-bit digits, padding bit 63, 21 digits, and padding bit 127. A digest decodes exactly when both padding bits are clear and the digits reach the target sum. -/
+/-- Decode the concrete little-endian layout: 32 four-bit digits, digit `i` at bits `4i, ..., 4i + 3`. A digest decodes exactly when the digits reach the target sum. -/
 def decodeDigest (digest : Digest) : Option Encoding :=
-  if digest.getLsbD 63 = false ∧ digest.getLsbD 127 = false ∧ Valid (digestEncoding digest)
-  then some (digestEncoding digest) else none
+  if Valid (digestEncoding digest) then some (digestEncoding digest) else none
+
+-- Unfolding the decoder on an unknown digest evaluates the digit sum; proofs rewrite with its equation.
+attribute [irreducible] decodeDigest
 
 end TargetSum
 

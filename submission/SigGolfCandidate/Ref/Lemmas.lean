@@ -13,7 +13,7 @@ import SigGolfCandidate.Ref.Count
 * parameter and layout tables (`height_values`, `shiftBelow_values`, `sigLayerOff_values`,
   `witLayerOff_values`, ...);
 * expand: `expandList` makes exactly one query (`countCalls_expandList`), and every witness it
-  returns has `witBytes = 6348` bytes (`length_of_expandOf`).
+  returns has `witBytes = 6064` bytes (`length_of_expandOf`).
 -/
 
 namespace SigGolfCandidate.Ref
@@ -196,15 +196,15 @@ theorem fmt_thInput_chain (lay tau p j : Nat) (v : Val) (hv : v.length = 16) (hp
   rw [this]
   simp [tweak, zeros]
 
-/-- The chain step `mu ∈ 1..8` of chain `i < 2^24`: the tweak carries `mu - 1` (byte 4) and `i`
+/-- The chain step `mu ∈ 1..16` of chain `i < 2^24`: the tweak carries `mu - 1` (byte 4) and `i`
 (bytes 5..8). -/
 theorem fmt_chainInput (lay tau e i mu : Nat) (v : Val) (hv : v.length = 16) (hmu : 1 ≤ mu)
-    (hmu' : mu ≤ 8) (hi : i < 2 ^ 24) :
+    (hmu' : mu ≤ 16) (hi : i < 2 ^ 24) :
     fmt (chainInput lay tau e i mu v) =
       ⟨0, ofList _ (tweak 1 lay tau (mu - 1 + 256 * i) e ++ zeros 32 ++ v)⟩ := by
   unfold chainInput
   rw [fmt_thInput_chain _ _ _ _ _ hv (by omega)]
-  have : splitP (8 * i + mu - 1) = mu - 1 + 256 * i := by unfold splitP; omega
+  have : splitP (16 * i + mu - 1) = mu - 1 + 256 * i := by unfold splitP; omega
   rw [this]
 
 /-- **Node block** of `tw(3, lay, tau, lam, j) || P || pl` (32-byte payload):
@@ -373,9 +373,9 @@ theorem blocks_fmt_le (x : List Byte) : (fmt x).blocks ≤ (pad64 x).blocks := b
 
 /-! ## Parameter tables -/
 
-theorem height_values : (List.range nLayers).map height = [11, 6, 6, 6, 5] := by decide
+theorem height_values : (List.range nLayers).map height = [11, 5, 5, 5, 4, 4] := by decide
 theorem shiftBelow_values :
-    (List.range nLayers).map shiftBelow = [23, 17, 11, 5, 0] := by decide
+    (List.range nLayers).map shiftBelow = [23, 18, 13, 8, 4, 0] := by decide
 theorem topH_eq : topH = 11 := rfl
 theorem topN_values : (List.range (topH + 1)).map topN =
     [0, 2048, 3072, 3584, 3840, 3968, 4032, 4064, 4080, 4088, 4092, 4094] := by decide
@@ -387,16 +387,16 @@ theorem porsSegs_eq : porsSegs = 29 := rfl
 
 theorem headBytes_eq : headBytes = 2144 := rfl
 theorem sigLayerOff_values :
-    (List.range (nLayers + 1)).map sigLayerOff = [2144, 2996, 3768, 4540, 5312, 6068] := by
+    (List.range (nLayers + 1)).map sigLayerOff = [2144, 2836, 3432, 4028, 4624, 5204, 5784] := by
   decide
 theorem sigBytes_eq_sigLayerOff : sigBytes = sigLayerOff nLayers := by decide
 theorem wStream_eq : wStream = 272 := rfl
 theorem streamBytes_eq : streamBytes = 2152 := rfl
 theorem wLayers_eq : wLayers = 2424 := rfl
 theorem witLayerOff_values :
-    (List.range (nLayers + 1)).map witLayerOff = [2424, 3272, 4040, 4808, 5576, 6328] := by
+    (List.range (nLayers + 1)).map witLayerOff = [2424, 3112, 3704, 4296, 4888, 5464, 6040] := by
   decide
-theorem witCounters_eq : witCounters = 6328 := by decide
+theorem witCounters_eq : witCounters = 6040 := by decide
 theorem witBytes_eq : witBytes = witCounters + 4 * nLayers := by decide
 
 /-! ## expand: one query, witness length -/
@@ -432,12 +432,12 @@ private theorem length_flatten_map_range' (n : Nat) (f : Nat → List Byte) (g :
       ih (fun i hi => hf i (by omega))]
     simp [hf n (by omega)]
 
-/-- The witness built by `expand` has `witBytes = 6348` bytes (for a signature of `sigBytes`
+/-- The witness built by `expand` has `witBytes = 6064` bytes (for a signature of `sigBytes`
 bytes and 15 sorted leaves). -/
 theorem length_witnessList (sig : List Byte) (hsig : sig.length = sigBytes) (v vs segs : List Nat)
     (hvs : vs.length = porsK) : (witnessList sig v vs segs).length = witBytes := by
-  have hs : sig.length = 6068 := hsig
-  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigLayerBytes lay ≤ 6068 := by decide
+  have hs : sig.length = 5784 := hsig
+  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigLayerBytes lay ≤ 5784 := by decide
   have hitem : ∀ i, i < porsK → (sigItem sig i).length = 16 := fun i hi =>
     length_slice _ _ _ (by rw [hs]; unfold porsK at hi; omega)
   have hbody : ∀ lay, lay < nLayers → (sigLayerBody sig lay).length = sigLayerBytes lay - 4 :=
@@ -453,13 +453,13 @@ theorem length_witnessList (sig : List Byte) (hsig : sig.length = sigBytes) (v v
     length_flatten_map_range _ _ _ hitem, length_flatten_map_range _ _ _ hctr,
     length_flatten_map_range' _ _ _ hbody]
   rw [show (sigRho sig).length = 16 from length_slice _ _ _ (by rw [hs]; decide)]
-  have : ((List.range nLayers).map fun lay => sigLayerBytes lay - 4).sum = 3904 := by decide
+  have : ((List.range nLayers).map fun lay => sigLayerBytes lay - 4).sum = 3616 := by decide
   rw [this]
   have : min streamBytes ((segStream sig segs).length + streamBytes) = streamBytes := by omega
   rw [this]
   decide
 
-/-- Every witness `expandOf` returns has `witBytes = 6348` bytes. -/
+/-- Every witness `expandOf` returns has `witBytes = 6064` bytes. -/
 theorem length_of_expandOf (sig : List Byte) (hsig : sig.length = sigBytes) (N : Nat)
     (w : List Byte) (h : expandOf sig N = some w) : w.length = witBytes := by
   unfold expandOf at h

@@ -22,39 +22,22 @@ theorem or3_lt (a b c n : Nat) : (a ||| b ||| c) < 2 ^ n ↔ a < 2 ^ n ∧ b < 2
   · rintro ⟨h1, h2, h3⟩
     exact Nat.or_lt_two_pow (Nat.or_lt_two_pow h1 h2) h3
 
-theorem ctr_word (wl : List Byte) (hwl : wl.length = 6348) (s : MachineState) (hW : WitOK wl s)
-    (i : Nat) (hi : i < 2) :
-    (s.getMem (BitVec.ofNat 64 (8376 + 8 * i))).toNat =
+theorem ctr_word (wl : List Byte) (hwl : wl.length = 6064) (s : MachineState) (hW : WitOK wl s)
+    (i : Nat) (hi : i < 3) :
+    (s.getMem (BitVec.ofNat 64 (8088 + 8 * i))).toNat =
       witCounter wl (2 * i) + 2 ^ 32 * witCounter wl (2 * i + 1) := by
-  rw [show 8376 + 8 * i = 0x800 + (6328 + 8 * i) by omega, wit_word hW _ (by omega) (by omega),
+  rw [show 8088 + 8 * i = 0x800 + (6040 + 8 * i) by omega, wit_word hW _ (by omega) (by omega),
     w64_toNat _ (by simp [slice]), leNat_slice8 _ _ (by omega)]
   simp only [witCounter, witCounters_eq]
-  rw [show 6328 + 4 * (2 * i) = 6328 + 8 * i by omega,
-    show 6328 + 4 * (2 * i + 1) = 6328 + 8 * i + 4 by omega]
+  rw [show 6040 + 4 * (2 * i) = 6040 + 8 * i by omega,
+    show 6040 + 4 * (2 * i + 1) = 6040 + 8 * i + 4 by omega]
 
-theorem ctr_word4 (wl : List Byte) (hwl : wl.length = 6348) (s : MachineState) (hW : WitOK wl s) :
-    ((extractWord32 (s.getMem (BitVec.ofNat 64 8392)) 0).zeroExtend 64).toNat = witCounter wl 4 := by
-  rw [show (8392 : Nat) = 0x800 + 6344 from rfl, wit_word hW _ (by omega) (by omega)]
-  simp only [extractWord32, BitVec.truncate_eq_setWidth, BitVec.toNat_setWidth,
-    BitVec.toNat_ushiftRight, Nat.shiftRight_eq_div_pow]
-  rw [w64_toNat _ (by simp [slice]), leNat_slice8 _ _ (by omega)]
-  have z : leNat (slice wl (6344 + 4) 4) = 0 := by
-    simp [slice, List.drop_eq_nil_of_le (show wl.length ≤ 6348 by omega), leNat]
-  rw [z]
-  simp only [witCounter, witCounters_eq]
-  have := leNat_lt (slice wl 6344 4)
-  have l4 : (slice wl 6344 4).length ≤ 4 := by simp [slice]
-  have : leNat (slice wl 6344 4) < 2 ^ 32 :=
-    lt_of_lt_of_le this (le_trans (Nat.pow_le_pow_right (by decide) l4) (by norm_num))
-  norm_num
-  omega
-
-theorem ctr_iff (wl : List Byte) (hwl : wl.length = 6348) (s : MachineState) (hW : WitOK wl s) :
+theorem ctr_iff (wl : List Byte) (hwl : wl.length = 6064) (s : MachineState) (hW : WitOK wl s) :
     ctrE'.eval s = 0 ↔ countersOk wl = true := by
   have e : ctrE'.eval s = (ctrX.eval s ||| (ctrX.eval s <<< ((BitVec.ofNat 64 32).toNat % 64))) >>>
       ((BitVec.ofNat 64 54).toNat % 64) := rfl
-  have ex : ctrX.eval s = s.getMem (BitVec.ofNat 64 8376) ||| s.getMem (BitVec.ofNat 64 8384) |||
-      (extractWord32 (s.getMem (BitVec.ofNat 64 8392)) 0).zeroExtend 64 := rfl
+  have ex : ctrX.eval s = s.getMem (BitVec.ofNat 64 8088) ||| s.getMem (BitVec.ofNat 64 8096) |||
+      s.getMem (BitVec.ofNat 64 8104) := rfl
   have hx := (ctrX.eval s).isLt
   have hsh : ctrE'.eval s = 0 ↔ (ctrX.eval s).toNat % 2 ^ 32 < 2 ^ 22 ∧ (ctrX.eval s).toNat / 2 ^ 32 < 2 ^ 22 := by
     rw [e, ← ctr_shift_iff _ hx]
@@ -70,20 +53,19 @@ theorem ctr_iff (wl : List Byte) (hwl : wl.length = 6348) (s : MachineState) (hW
   rw [hsh, ex]
   have w0 := ctr_word wl hwl s hW 0 (by decide)
   have w1 := ctr_word wl hwl s hW 1 (by decide)
-  have w4 := ctr_word4 wl hwl s hW
-  simp only [Nat.mul_zero, Nat.add_zero, Nat.mul_one, Nat.reduceMul, Nat.reduceAdd] at w0 w1
+  have w2 := ctr_word wl hwl s hW 2 (by decide)
+  simp only [Nat.mul_zero, Nat.add_zero, Nat.mul_one, Nat.reduceMul, Nat.reduceAdd] at w0 w1 w2
   have d0 := witCounter_lt wl 0; have d1 := witCounter_lt wl 1; have d2 := witCounter_lt wl 2
-  have d3 := witCounter_lt wl 3; have d4 := witCounter_lt wl 4
+  have d3 := witCounter_lt wl 3; have d4 := witCounter_lt wl 4; have d5 := witCounter_lt wl 5
   simp only [BitVec.toNat_or]
-  rw [w0, w1, w4]
+  rw [w0, w1, w2]
   simp only [Nat.or_mod_two_pow, Nat.or_div_two_pow, or3_lt]
   simp only [countersOk, nLayers, cMax, List.all, List.range, List.range.loop, decide_eq_true_eq,
     Bool.and_eq_true]
   generalize witCounter wl 0 = x0 at *; generalize witCounter wl 1 = x1 at *
   generalize witCounter wl 2 = x2 at *; generalize witCounter wl 3 = x3 at *
-  generalize witCounter wl 4 = x4 at *
-  norm_num at d0 d1 d2 d3 d4 ⊢
-  rw [Nat.mod_eq_of_lt d4, Nat.div_eq_of_lt d4]
+  generalize witCounter wl 4 = x4 at *; generalize witCounter wl 5 = x5 at *
+  norm_num at d0 d1 d2 d3 d4 d5 ⊢
   omega
 
 /-! ## The digest -/
@@ -126,7 +108,7 @@ theorem startCheck_parts :
   simp only [startCheck, Bool.and_eq_true] at this
   exact ⟨this.1.1, this.1.2, this.2⟩
 
-theorem start_step (ml pkl wl : List Byte) (hml : ml.length = 32) (hwl : wl.length = 6348)
+theorem start_step (ml pkl wl : List Byte) (hml : ml.length = 32) (hwl : wl.length = 6064)
     (s : MachineState) (hs : InitOK ml pkl wl s) :
     (countersOk wl = false → ∃ t, Steps image s 20 20 t ∧ fetch image t = some (.base .ECALL) ∧
         t.getReg .x5 = 1 ∧ t.getReg .x10 = 1) ∧

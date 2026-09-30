@@ -289,7 +289,7 @@ theorem evenBound_verify (publicKey : PublicKey) (message : Message) (signature 
         cases root <;> exact evenBound_pure _ _
   · exact evenBound_pure _ _
 
-theorem verifyHashBound_eq : verifyHashBound = 8061 := by
+theorem verifyHashBound_eq : verifyHashBound = 9484 := by
   simp only [verifyHashBound, ftsVerifyBound, leafVerifyBound, segmentVerifyBound, layerVerifyBound]
   decide
 

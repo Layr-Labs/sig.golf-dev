@@ -1,4 +1,4 @@
-import SigGolfCandidate.Verify.FoldRuns
+import SigGolfCandidate.Verify.Defs
 
 /-! # Partial specifications of path runs (only the registers of interest are pinned down) -/
 

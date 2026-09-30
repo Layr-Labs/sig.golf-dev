@@ -1,7 +1,7 @@
 import SigGolfCandidate.Expand.Copy
 
 /-!
-# `expand`: the copy phase (instructions 139 .. 283)
+# `expand`: the copy phase (instructions 139 .. 305)
 
 `rho` (4 words), the pi bytes (`pi_loop`: byte `s` = low byte of `KEYS[s]`), the secrets (60 words),
 then per layer the counter word and the body; HALT(0). The witness buffer's byte view afterwards is
@@ -23,9 +23,10 @@ def piF (A : Nat → Nat) (j : Nat) (g : Nat → Byte) : Nat → Byte := fun a =
 
 /-- The copies after the pi loop: secrets, then per layer the counter word and the body. -/
 def copyRest : List (Nat × Nat × Nat) :=
-  [(0x3310, 0x820, 60), (0x3B60, 0x20B8, 1), (0x3B64, 0x1178, 212), (0x3EB4, 0x20BC, 1),
-    (0x3EB8, 0x14C8, 192), (0x41B8, 0x20C0, 1), (0x41BC, 0x17C8, 192), (0x44BC, 0x20C4, 1),
-    (0x44C0, 0x1AC8, 192), (0x47C0, 0x20C8, 1), (0x47C4, 0x1DC8, 188)]
+  [(0x3310, 0x820, 60), (0x3B60, 0x1F98, 1), (0x3B64, 0x1178, 172), (0x3E14, 0x1F9C, 1),
+    (0x3E18, 0x1428, 148), (0x4068, 0x1FA0, 1), (0x406C, 0x1678, 148), (0x42BC, 0x1FA4, 1),
+    (0x42C0, 0x18C8, 148), (0x4510, 0x1FA8, 1), (0x4514, 0x1B18, 144), (0x4754, 0x1FAC, 1),
+    (0x4758, 0x1D58, 144)]
 
 theorem pi_loop (A : Nat → Nat) (g : Nat → Byte) :
     ∀ k (v : MachineState), k ≤ 15 → (v.pc = if k = 0 then pcOf 160 else pcOf 153) →
@@ -61,7 +62,7 @@ theorem pi_loop (A : Nat → Nat) (g : Nat → Byte) :
 
 
 
-/-- The copy phase (instructions 139 .. 283): witness bytes, then HALT(0). -/
+/-- The copy phase (instructions 139 .. 305): witness bytes, then HALT(0). -/
 theorem copy_run (A : Nat → Nat) (u : MachineState) (hpc : u.pc = pcOf 139) (hA : ArrOk u A) :
     Run u 6440 (fun v => fetch image v = some (.base .ECALL) ∧ v.getReg .x5 = 1 ∧ v.getReg .x10 = 0 ∧
       BytesEq v (applyCopies copyRest (piF A 15 (applyCopy (0x3300, 0x800, 4)
@@ -93,29 +94,33 @@ theorem copy_run (A : Nat → Nat) (u : MachineState) (hpc : u.pc = pcOf 139) (h
   have st2 := stageRun (e := 182) blk171 codeAt_171 rfl rfl rfl rfl rfl rfl codeAt_176 (by decide) (by decide) w1 p1 _ b1
   refine Run.seq (B₂ := 5927) st2 (fun w2 ⟨p2, b2⟩ => ?_) (by simp only [show blk171.res.cycles = 5 by kernel_rfl]; norm_num)
   have st3 := stageRun (e := 193) blk182 codeAt_182 rfl rfl rfl rfl rfl rfl codeAt_187 (by decide) (by decide) w2 p2 _ b2
-  refine Run.seq (B₂ := 4650) st3 (fun w3 ⟨p3, b3⟩ => ?_) (by simp only [show blk182.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 4890) st3 (fun w3 ⟨p3, b3⟩ => ?_) (by simp only [show blk182.res.cycles = 5 by kernel_rfl]; norm_num)
   have st4 := stageRun (e := 204) blk193 codeAt_193 rfl rfl rfl rfl rfl rfl codeAt_198 (by decide) (by decide) w3 p3 _ b3
-  refine Run.seq (B₂ := 4639) st4 (fun w4 ⟨p4, b4⟩ => ?_) (by simp only [show blk193.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 4879) st4 (fun w4 ⟨p4, b4⟩ => ?_) (by simp only [show blk193.res.cycles = 5 by kernel_rfl]; norm_num)
   have st5 := stageRun (e := 215) blk204 codeAt_204 rfl rfl rfl rfl rfl rfl codeAt_209 (by decide) (by decide) w4 p4 _ b4
-  refine Run.seq (B₂ := 3482) st5 (fun w5 ⟨p5, b5⟩ => ?_) (by simp only [show blk204.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 3986) st5 (fun w5 ⟨p5, b5⟩ => ?_) (by simp only [show blk204.res.cycles = 5 by kernel_rfl]; norm_num)
   have st6 := stageRun (e := 226) blk215 codeAt_215 rfl rfl rfl rfl rfl rfl codeAt_220 (by decide) (by decide) w5 p5 _ b5
-  refine Run.seq (B₂ := 3471) st6 (fun w6 ⟨p6, b6⟩ => ?_) (by simp only [show blk215.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 3975) st6 (fun w6 ⟨p6, b6⟩ => ?_) (by simp only [show blk215.res.cycles = 5 by kernel_rfl]; norm_num)
   have st7 := stageRun (e := 237) blk226 codeAt_226 rfl rfl rfl rfl rfl rfl codeAt_231 (by decide) (by decide) w6 p6 _ b6
-  refine Run.seq (B₂ := 2314) st7 (fun w7 ⟨p7, b7⟩ => ?_) (by simp only [show blk226.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 3082) st7 (fun w7 ⟨p7, b7⟩ => ?_) (by simp only [show blk226.res.cycles = 5 by kernel_rfl]; norm_num)
   have st8 := stageRun (e := 248) blk237 codeAt_237 rfl rfl rfl rfl rfl rfl codeAt_242 (by decide) (by decide) w7 p7 _ b7
-  refine Run.seq (B₂ := 2303) st8 (fun w8 ⟨p8, b8⟩ => ?_) (by simp only [show blk237.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 3071) st8 (fun w8 ⟨p8, b8⟩ => ?_) (by simp only [show blk237.res.cycles = 5 by kernel_rfl]; norm_num)
   have st9 := stageRun (e := 259) blk248 codeAt_248 rfl rfl rfl rfl rfl rfl codeAt_253 (by decide) (by decide) w8 p8 _ b8
-  refine Run.seq (B₂ := 1146) st9 (fun w9 ⟨p9, b9⟩ => ?_) (by simp only [show blk248.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 2178) st9 (fun w9 ⟨p9, b9⟩ => ?_) (by simp only [show blk248.res.cycles = 5 by kernel_rfl]; norm_num)
   have st10 := stageRun (e := 270) blk259 codeAt_259 rfl rfl rfl rfl rfl rfl codeAt_264 (by decide) (by decide) w9 p9 _ b9
-  refine Run.seq (B₂ := 1135) st10 (fun w10 ⟨p10, b10⟩ => ?_) (by simp only [show blk259.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.seq (B₂ := 2167) st10 (fun w10 ⟨p10, b10⟩ => ?_) (by simp only [show blk259.res.cycles = 5 by kernel_rfl]; norm_num)
   have st11 := stageRun (e := 281) blk270 codeAt_270 rfl rfl rfl rfl rfl rfl codeAt_275 (by decide) (by decide) w10 p10 _ b10
-  refine Run.seq (B₂ := 2) st11 (fun w11 ⟨p11, b11⟩ => ?_) (by simp only [show blk270.res.cycles = 5 by kernel_rfl]; norm_num)
-  refine Run.of (symRun_sound blk281 codeAt_281 w11 p11 (by simp only [blk281.res, rv_simp]))
-    (by simp only [show blk281.res.cycles = 2 by kernel_rfl]; norm_num) ?_
-  refine ⟨symRun_ecall blk281 codeAt_281 w11 (by simp only [blk281.res, rv_simp]) rfl,
-    by simp only [blk281.res, rv_simp], by simp only [blk281.res, rv_simp], ?_⟩
+  refine Run.seq (B₂ := 1298) st11 (fun w11 ⟨p11, b11⟩ => ?_) (by simp only [show blk270.res.cycles = 5 by kernel_rfl]; norm_num)
+  have st12 := stageRun (e := 292) blk281 codeAt_281 rfl rfl rfl rfl rfl rfl codeAt_286 (by decide) (by decide) w11 p11 _ b11
+  refine Run.seq (B₂ := 1287) st12 (fun w12 ⟨p12, b12⟩ => ?_) (by simp only [show blk281.res.cycles = 5 by kernel_rfl]; norm_num)
+  have st13 := stageRun (e := 303) blk292 codeAt_292 rfl rfl rfl rfl rfl rfl codeAt_297 (by decide) (by decide) w12 p12 _ b12
+  refine Run.seq (B₂ := 418) st13 (fun w13 ⟨p13, b13⟩ => ?_) (by simp only [show blk292.res.cycles = 5 by kernel_rfl]; norm_num)
+  refine Run.of (symRun_sound blk303 codeAt_303 w13 p13 (by simp only [blk303.res, rv_simp]))
+    (by simp only [show blk303.res.cycles = 2 by kernel_rfl]; norm_num) ?_
+  refine ⟨symRun_ecall blk303 codeAt_303 w13 (by simp only [blk303.res, rv_simp]) rfl,
+    by simp only [blk303.res, rv_simp], by simp only [blk303.res, rv_simp], ?_⟩
   intro a ha
-  rw [getByte_ofNat _ _ ha, toState_getMem_nil rfl, ← getByte_ofNat _ _ ha, b11 a ha]
+  rw [getByte_ofNat _ _ ha, toState_getMem_nil rfl, ← getByte_ofNat _ _ ha, b13 a ha]
   rfl
 
 

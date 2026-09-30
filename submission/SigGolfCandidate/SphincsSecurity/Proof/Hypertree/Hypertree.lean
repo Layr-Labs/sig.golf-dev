@@ -3,7 +3,7 @@ import SigGolfCandidate.SphincsSecurity.Proof.Scheme.StatementLemmas
 /-!
 # The hypertree
 
-Seven layers, bottom first. Each layer's fold produces the root of its tree, which is exactly the
+Six layers, bottom first. Each layer's fold produces the root of its tree, which is exactly the
 message the layer above it signs, so the layers chain; layer `0`'s fold is the public root.
 -/
 

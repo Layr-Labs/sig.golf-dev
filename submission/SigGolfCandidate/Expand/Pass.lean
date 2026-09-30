@@ -129,7 +129,7 @@ theorem pass_body (A : Nat → Nat) (hlt : ∀ p < 15, A p < 2 ^ 22) (t0 : Machi
   have hxl : lv A s ^^^ lv A (s + 1) < 2 ^ 14 := Nat.xor_lt_two_pow hl0 hl1
   have v9 : v.getReg .x9 = BitVec.ofNat 64 (lv A s ^^^ lv A (s + 1)) := by
     simp only [hv, blk57.res, rv_simp, u8]; ex_bvsimp []; rw [a0, a1]; ex_bvsimp [lv]
-  have vpc : v.pc = if lv A s = lv A (s + 1) then pcOf 284 else pcOf 64 := by
+  have vpc : v.pc = if lv A s = lv A (s + 1) then pcOf 306 else pcOf 64 := by
     simp only [hv, blk57.res, rv_simp, u8]; ex_bvsimp []; rw [a0, a1]; ex_bvsimp [ofNat_beq_ofNat]
     rw [Nat.mod_eq_of_lt (a := A s / 256 ^^^ A (s + 1) / 256) (by have := hxl; unfold lv at this; omega)]
     change (if decide (lv A s ^^^ lv A (s + 1) = 0) = true then _ else _) = _
@@ -192,7 +192,7 @@ theorem pass_run (A : Nat → Nat) (hlt : ∀ p < 15, A p < 2 ^ 22) (t : Machine
     refine (Run.blk blk70 codeAt_70 upc (by simp only [blk70.res, rv_simp]) (B := 2) ?_).mono
       (by rw [show blk70.res.cycles = 2 from rfl]) (fun _ h => h)
     set v := blk70.res.toState u with hv
-    have vpc : v.pc = if pairSum A 14 ≤ 132 then pcOf 72 else pcOf 284 := by
+    have vpc : v.pc = if pairSum A 14 ≤ 132 then pcOf 72 else pcOf 306 := by
       simp only [hv, blk70.res, rv_simp, u15]; ex_bvsimp []
       rw [ofNat_slt_ofNat _ _ (by norm_num) (by omega)]
       by_cases h : pairSum A 14 ≤ 132 <;> simp [h] <;> omega

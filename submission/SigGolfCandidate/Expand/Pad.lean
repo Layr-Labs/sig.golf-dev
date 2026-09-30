@@ -76,7 +76,7 @@ theorem pad_body (sig : List Byte) (t0 u0 : MachineState) (hsig : SigOK t0 sig) 
       · have := hzero (j - d) (by omega); rwa [show d + (j - d) = j by omega] at this
   · have hnz : t0.getMem (BitVec.ofNat 64 (0x3300 + d)) ≠ 0 := by
       intro h0; apply hzero; intro k hk; rw [← hbytes k hk, h0]; simp [extractByte]
-    have p2 : v2.pc = pcOf 284 := by
+    have p2 : v2.pc = pcOf 306 := by
       simp only [hv2, blk135.res, rv_simp, r1.get .x29 List.not_mem_nil, v29]; (try ex_bvsimp [])
       rw [hw]; simp only [ofNat_bne_ofNat, bne_iff_ne, ne_eq]; simp; exact hnz
     refine (run_fail v2 p2).mono (le_refl _) (fun w hw => ⟨by omega, Or.inl ⟨hw, fun hp => hzero fun k hk => ?_⟩⟩)

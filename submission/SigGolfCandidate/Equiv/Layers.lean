@@ -114,7 +114,7 @@ theorem hash16_mask (seed : MasterSeed) (l s : Nat) (hl : l < SphincsSecurity.ma
   simp [toB_tweakFields, toB_seed, Ref.maskInput, Ref.thInput]
 
 theorem chainTo_eq (lay : Layer) (tree : TreeIndex) (leaf : LeafIndex)
-    (c : ChainIndex) (x : Nat) (hx : x ≤ 7) (v : Digest) :
+    (c : ChainIndex) (x : Nat) (hx : x ≤ 15) (v : Digest) :
     Ref.chainTo lay tree leaf c x (dv v) =
       dv <$> relabel fmtQ (SphincsSecurity.Concrete.chainWalk (m := AComp) 0 lay tree leaf c 0 x v) := by
   unfold Ref.chainTo

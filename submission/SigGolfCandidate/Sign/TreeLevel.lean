@@ -2,11 +2,11 @@ import SigGolfCandidate.Sign.TreeLeaf
 import SigGolfCandidate.Sign.TreeBuildNode
 
 /-!
-# `sign`, tree_build: the levels (`tb_level_loop`, instructions 565 .. 603)
+# `sign`, tree_build: the levels (`tb_level_loop`, instructions 558 .. 595)
 
 `tlevels_sim` : from `tb_level_loop` with `LAM = 1`, `NCNT = 2^h` and the leaves in `TA`, the
 machine refines the level fold of `buildLevels (nodeInput lay tau) e h leaves`; the path node of
-level `l` is staged at `SIGL + 680 + 16 l`.
+level `l` is staged at `SIGL + 520 + 16 l`.
 -/
 
 set_option linter.unusedSimpArgs false
@@ -19,11 +19,11 @@ open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGol
 theorem xor1_lt (a n : Nat) (ha : a < 2 ^ n) (hn : 1 ≤ n) : a ^^^ 1 < 2 ^ n :=
   Nat.xor_lt_two_pow ha (lt_of_lt_of_le (by norm_num) (Nat.pow_le_pow_right (by norm_num) hn))
 
-theorem seg609_eq : seg609 = nodeSegA := rfl
-theorem seg626_eq : seg626 = nodeSegB := rfl
+theorem seg575_eq : seg575 = nodeSegA := rfl
+theorem seg592_eq : seg592 = nodeSegB := rfl
 
-theorem codeAt_node609 : CodeAt image (pcOf 609) nodeSegA := seg609_eq ▸ codeAt_609
-theorem codeAt_node626 : CodeAt image (pcOf (609 + 17)) nodeSegB := seg626_eq ▸ codeAt_626
+theorem codeAt_node575 : CodeAt image (pcOf 575) nodeSegA := seg575_eq ▸ codeAt_575
+theorem codeAt_node592 : CodeAt image (pcOf (575 + 17)) nodeSegB := seg592_eq ▸ codeAt_592
 
 /-- Facts at the start of the tree level loop. -/
 structure TLevCtx (p : TreePar) (t0 : MachineState) : Prop where
@@ -31,7 +31,7 @@ structure TLevCtx (p : TreePar) (t0 : MachineState) : Prop where
   htau : p.tau < 2 ^ 30
   hh : 1 ≤ p.h ∧ p.h ≤ 6
   he : p.e < 2 ^ p.h
-  hsigl : p.sigl = 0x900 + 856 * p.lay
+  hsigl : p.sigl = 0x900 + 696 * p.lay
   hheight : p.h = height p.lay
   x5 : t0.getReg .x5 = 0
   x8 : t0.getReg .x8 = BitVec.ofNat 64 p.lay
@@ -44,7 +44,7 @@ structure TLevCtx (p : TreePar) (t0 : MachineState) : Prop where
 
 def tlevW (p : TreePar) (a : Nat) : Prop :=
   a = 0x1C0 ∨ a = 0x1C8 ∨ (0x1E0 ≤ a ∧ a < 0x200) ∨ (0xB0000 ≤ a ∧ a < 0xB0000 + 16 * 65) ∨
-    (p.sigl + 680 ≤ a ∧ a < p.sigl + 856)
+    (p.sigl + 520 ≤ a ∧ a < p.sigl + 696)
 
 def tlevRegs : List Reg := [.x1, .x2, .x3, .x10, .x11, .x12, .x15, .x16, .x17, .x29]
 
@@ -52,25 +52,25 @@ def tlevRegs : List Reg := [.x1, .x2, .x3, .x10, .x11, .x12, .x15, .x16, .x17, .
 def TLevInv (p : TreePar) (t0 : MachineState) (j : Nat) (st : List Val × List Val) (t : MachineState) :
     Prop :=
   j ≤ p.h ∧ st.1.length = 2 ^ (p.h - j) ∧ (∀ v ∈ st.1, v.length = 16) ∧ Slots t 0xB0000 st.1 ∧
-  st.2.length = j ∧ (∀ v ∈ st.2, v.length = 16) ∧ Slots t (p.sigl + 680) st.2 ∧
-  t.pc = (if j < p.h then pcOf 592 else pcOf 630) ∧ t.getReg .x15 = BitVec.ofNat 64 (j + 1) ∧
+  st.2.length = j ∧ (∀ v ∈ st.2, v.length = 16) ∧ Slots t (p.sigl + 520) st.2 ∧
+  t.pc = (if j < p.h then pcOf 558 else pcOf 596) ∧ t.getReg .x15 = BitVec.ofNat 64 (j + 1) ∧
   t.getReg .x17 = BitVec.ofNat 64 (2 ^ (p.h - j)) ∧
   RegsEq t0 t tlevRegs ∧ Frame t0 t (tlevW p)
 
-theorem tlev_path_ne (sigl lay i j m : Nat) (hsig : sigl = 0x900 + 856 * lay) (hl : lay < 7)
+theorem tlev_path_ne (sigl lay i j m : Nat) (hsig : sigl = 0x900 + 696 * lay) (hl : lay < 7)
     (hij : i < j) (hj : j < 6) (hm : m ≤ 32) :
-    ((¬sigl + 680 + 16 * i = 448 ∧ ¬sigl + 680 + 16 * i = 456 ∧
-        ¬sigl + 680 + 16 * i = sigl + 680 + 16 * j ∧ ¬sigl + 680 + 16 * i = sigl + 680 + 16 * j + 8) ∧
-      ¬(720896 ≤ sigl + 680 + 16 * i ∧ sigl + 680 + 16 * i < 720896 + 32 * m) ∧
-        ¬sigl + 680 + 16 * i = 456 ∧ ¬sigl + 680 + 16 * i = 480 ∧
-          ¬sigl + 680 + 16 * i = 488 ∧ ¬sigl + 680 + 16 * i = 496 ∧ ¬sigl + 680 + 16 * i = 504) ∧
-    ((¬sigl + 680 + 16 * i + 8 = 448 ∧ ¬sigl + 680 + 16 * i + 8 = 456 ∧
-        ¬sigl + 680 + 16 * i + 8 = sigl + 680 + 16 * j ∧
-          ¬sigl + 680 + 16 * i + 8 = sigl + 680 + 16 * j + 8) ∧
-      ¬(720896 ≤ sigl + 680 + 16 * i + 8 ∧ sigl + 680 + 16 * i + 8 < 720896 + 32 * m) ∧
-        ¬sigl + 680 + 16 * i + 8 = 456 ∧ ¬sigl + 680 + 16 * i + 8 = 480 ∧
-          ¬sigl + 680 + 16 * i + 8 = 488 ∧ ¬sigl + 680 + 16 * i + 8 = 496 ∧
-            ¬sigl + 680 + 16 * i + 8 = 504) := by
+    ((¬sigl + 520 + 16 * i = 448 ∧ ¬sigl + 520 + 16 * i = 456 ∧
+        ¬sigl + 520 + 16 * i = sigl + 520 + 16 * j ∧ ¬sigl + 520 + 16 * i = sigl + 520 + 16 * j + 8) ∧
+      ¬(720896 ≤ sigl + 520 + 16 * i ∧ sigl + 520 + 16 * i < 720896 + 32 * m) ∧
+        ¬sigl + 520 + 16 * i = 456 ∧ ¬sigl + 520 + 16 * i = 480 ∧
+          ¬sigl + 520 + 16 * i = 488 ∧ ¬sigl + 520 + 16 * i = 496 ∧ ¬sigl + 520 + 16 * i = 504) ∧
+    ((¬sigl + 520 + 16 * i + 8 = 448 ∧ ¬sigl + 520 + 16 * i + 8 = 456 ∧
+        ¬sigl + 520 + 16 * i + 8 = sigl + 520 + 16 * j ∧
+          ¬sigl + 520 + 16 * i + 8 = sigl + 520 + 16 * j + 8) ∧
+      ¬(720896 ≤ sigl + 520 + 16 * i + 8 ∧ sigl + 520 + 16 * i + 8 < 720896 + 32 * m) ∧
+        ¬sigl + 520 + 16 * i + 8 = 456 ∧ ¬sigl + 520 + 16 * i + 8 = 480 ∧
+          ¬sigl + 520 + 16 * i + 8 = 488 ∧ ¬sigl + 520 + 16 * i + 8 = 496 ∧
+            ¬sigl + 520 + 16 * i + 8 = 504) := by
   subst hsig; omega
 
 theorem tlevel_body (p : TreePar) (t0 : MachineState) (ctx : TLevCtx p t0) (j : Nat) (hj : j < p.h)
@@ -83,7 +83,7 @@ theorem tlevel_body (p : TreePar) (t0 : MachineState) (ctx : TLevCtx p t0) (j : 
   have htau := ctx.htau
   have hh := ctx.hh
   have he := ctx.he
-  have tpc' : t.pc = pcOf 592 := by rw [tpc, if_pos hj]
+  have tpc' : t.pc = pcOf 558 := by rw [tpc, if_pos hj]
   have tx5 : t.getReg .x5 = 0 := by rw [tregs.get .x5, ctx.x5]
   have tx8 : t.getReg .x8 = BitVec.ofNat 64 p.lay := by rw [tregs.get .x8, ctx.x8]
   have tx9 : t.getReg .x9 = BitVec.ofNat 64 p.h := by rw [tregs.get .x9, ctx.x9]
@@ -101,54 +101,54 @@ theorem tlevel_body (p : TreePar) (t0 : MachineState) (ctx : TLevCtx p t0) (j : 
     exact he
   have hudiv : p.e / 2 ^ j ≤ p.e := Nat.div_le_self _ _
   have he32 : p.e < 64 := lt_of_lt_of_le he (pow_le32 _ hh.2)
-  -- block 565: capture sibling, node tweak
-  have hs1 := symRun_sound blk592 codeAt_592 t tpc' (by
-    simp only [blk592.res, rv_simp]
+  -- block 558: capture sibling, node tweak
+  have hs1 := symRun_sound blk558 codeAt_558 t tpc' (by
+    simp only [blk558.res, rv_simp]
     bvsimp [t15, tx13, tx18, tx19, accessValid_ofNat, ne_eq, ofNat_eq_iff]
     rw [← hsib]; omega)
-  have hc1 : blk592.res.cycles = 17 := rfl
+  have hc1 : blk558.res.cycles = 17 := rfl
   rw [hc1] at hs1
-  set t1 := blk592.res.toState t with ht1
-  have f1 : Frame t t1 (fun x => x = 0x1C0 ∨ x = 0x1C8 ∨ x = p.sigl + 680 + 16 * j ∨
-      x = p.sigl + 680 + 16 * j + 8) := by
+  set t1 := blk558.res.toState t with ht1
+  have f1 : Frame t t1 (fun x => x = 0x1C0 ∨ x = 0x1C8 ∨ x = p.sigl + 520 + 16 * j ∨
+      x = p.sigl + 520 + 16 * j + 8) := by
     apply frame_toState; intro x hx hW
-    simp only [blk592.res, rv_simp, List.forall_mem_cons, List.not_mem_nil, IsEmpty.forall_iff,
+    simp only [blk558.res, rv_simp, List.forall_mem_cons, List.not_mem_nil, IsEmpty.forall_iff,
       implies_true, and_true, ne_eq]
     bvsimp [t15, tx18, ofNat_eq_iff]
     omega
   have r1 : RegsEq t t1 [.x1, .x2, .x3, .x16, .x17, .x29] := by
     intro r hr; rw [ht1, Result.toState_getReg]
     cases r <;> first | exact absurd (by decide) hr | rfl
-  have pc1 : t1.pc = pcOf 609 := by simp only [ht1, blk592.res, rv_simp]
-  have y16 : t1.getReg .x16 = 0 := by simp only [ht1, blk592.res, rv_simp]
+  have pc1 : t1.pc = pcOf 575 := by simp only [ht1, blk558.res, rv_simp]
+  have y16 : t1.getReg .x16 = 0 := by simp only [ht1, blk558.res, rv_simp]
   have y17 : t1.getReg .x17 = BitVec.ofNat 64 (2 ^ (p.h - 1 - j)) := by
-    simp only [ht1, blk592.res, rv_simp]
+    simp only [ht1, blk558.res, rv_simp]
     bvsimp [t17]
     congr 1; rw [hpow]; omega
   have y19 : t1.getReg .x19 = BitVec.ofNat 64 0xB0000 := by rw [r1.get .x19, tx19]
   have y5 : t1.getReg .x5 = 0 := by rw [r1.get .x5, tx5]
   have w448 : t1.getMem (BitVec.ofNat 64 448) = twWord0 3 p.lay p.tau 0 := by
-    simp only [ht1, blk592.res, rv_simp]
+    simp only [ht1, blk558.res, rv_simp]
     bvsimp [t15, tx8, tx18, ofNat_eq_iff]
     rw [ofNat_or_disjoint (p.lay * 65536) 769 16 (by omega) (by omega) (by omega)]
     unfold twWord0; congr 1
     rw [Nat.div_eq_of_lt (by omega : p.tau < 2 ^ 32), Nat.mod_eq_of_lt (a := p.lay) (by omega)]
     omega
   have w456 : lo32 (t1.getMem (BitVec.ofNat 64 456)) = BitVec.ofNat 32 p.tau := by
-    simp only [ht1, blk592.res, rv_simp]
+    simp only [ht1, blk558.res, rv_simp]
     bvsimp [t15, tx18, tx30, ofNat_eq_iff]
     rw [lo32_replace0]
-  have hcap1 : t1.readWords (BitVec.ofNat 64 (p.sigl + 680 + 16 * j)) 2 =
+  have hcap1 : t1.readWords (BitVec.ofNat 64 (p.sigl + 520 + 16 * j)) 2 =
       wordsOf (st.1.getD sib []) := by
     rw [← hslots.getD sib (by omega), readWords_ofNat_two, readWords_ofNat_two]
-    simp only [ht1, blk592.res, rv_simp]
+    simp only [ht1, blk558.res, rv_simp]
     bvsimp [t15, tx13, tx18, tx19, ofNat_eq_iff]
     simp (disch := bvomega) only [if_pos, if_neg]
     have e : (p.e / 2 ^ j ^^^ 1) * 16 = 16 * sib := by rw [hsib, Nat.mul_comm]
     rw [e, Nat.add_comm (16 * sib) 720896]
   -- node loop
   let c : NodeCtx := ⟨3, p.lay, p.tau, 1 + j, 0xB0000, 2 ^ (p.h - 1 - j)⟩
-  have hnode := nodeLoop_sim codeAt_node609 codeAt_node626 c st.1 (by simp only [c]; rw [hlen, hpow])
+  have hnode := nodeLoop_sim codeAt_node575 codeAt_node592 c st.1 (by simp only [c]; rw [hlen, hpow])
     hvals (by simp only [c]; positivity) (by simp only [c]; norm_num) (by simp only [c])
     (by simp only [c]; omega) t1 pc1 y16 y17 y19 y5 (by simp only [c]; omega)
     (fun j' l r hj' hl hr => by
@@ -174,22 +174,22 @@ theorem tlevel_body (p : TreePar) (t0 : MachineState) (ctx : TLevCtx p t0) (j : 
   rw [hstep]
   refine Sim.steps hs1 (Sim.bind hnode (fun acc t2 hn => ?_))
   obtain ⟨-, hacc, haccv, haccs, -, pc2, x216, nregs, nframe⟩ := hn
-  have pc2' : t2.pc = pcOf 628 := by rw [pc2, if_neg (lt_irrefl _)]
-  have hs3 := symRun_sound blk628 codeAt_628 t2 pc2' (by simp only [blk628.res, rv_simp])
-  have hc3 : blk628.res.cycles = 2 := rfl
+  have pc2' : t2.pc = pcOf 594 := by rw [pc2, if_neg (lt_irrefl _)]
+  have hs3 := symRun_sound blk594 codeAt_594 t2 pc2' (by simp only [blk594.res, rv_simp])
+  have hc3 : blk594.res.cycles = 2 := rfl
   rw [hc3] at hs3
-  set t3 := blk628.res.toState t2 with ht3
+  set t3 := blk594.res.toState t2 with ht3
   have r3 : RegsEq t2 t3 [.x15] := by
     intro r hr; rw [ht3, Result.toState_getReg]
     cases r <;> first | exact absurd (by decide) hr | rfl
   have f3 : Frame t2 t3 (fun _ => False) := by
-    apply frame_toState; intro x hx hW; simp [blk628.res]
+    apply frame_toState; intro x hx hW; simp [blk594.res]
   have x215 : t2.getReg .x15 = BitVec.ofNat 64 (j + 1) := by
     rw [nregs.toRegsEq.get .x15, r1.get .x15, t15]
   have x29 : t2.getReg .x9 = BitVec.ofNat 64 p.h := by
     rw [nregs.toRegsEq.get .x9, r1.get .x9, tx9]
-  have ft13 : Frame t t3 (fun x => (x = 0x1C0 ∨ x = 0x1C8 ∨ x = p.sigl + 680 + 16 * j ∨
-      x = p.sigl + 680 + 16 * j + 8) ∨ ((c.B ≤ x ∧ x < c.B + 32 * c.m) ∨ x = 456 ∨ x = 480 ∨
+  have ft13 : Frame t t3 (fun x => (x = 0x1C0 ∨ x = 0x1C8 ∨ x = p.sigl + 520 + 16 * j ∨
+      x = p.sigl + 520 + 16 * j + 8) ∨ ((c.B ≤ x ∧ x < c.B + 32 * c.m) ∨ x = 456 ∨ x = 480 ∨
         x = 488 ∨ x = 496 ∨ x = 504)) := (f1.trans (nframe.toFrame.trans f3)).mono (by
       intro x hx; rcases hx with h | h | h; exact Or.inl h; exact Or.inr h; exact h.elim)
   refine Sim.pure_steps hs3 ⟨by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -206,7 +206,7 @@ theorem tlevel_body (p : TreePar) (t0 : MachineState) (ctx : TLevCtx p t0) (j : 
       simp only [List.getElem?_eq_getElem (show sib < st.1.length by omega), Option.getD_some]
       exact hvals _ (List.getElem_mem _)
   · apply Slots.snoc
-    · have hb : p.sigl + 680 + 16 * st.2.length + 16 < 2 ^ 64 := by rw [hplen]; omega
+    · have hb : p.sigl + 520 + 16 * st.2.length + 16 < 2 ^ 64 := by rw [hplen]; omega
       refine hpath.frame ft13 hb ?_
       intro i hi
       have hij : i < j := by rw [hplen] at hi; exact hi
@@ -220,12 +220,12 @@ theorem tlevel_body (p : TreePar) (t0 : MachineState) (ctx : TLevCtx p t0) (j : 
       exact tlev_path_ne p.sigl p.lay i j m hsig hl hij (by omega) hm16
     · rw [hplen, f3.readWords _ _ (by omega) (by simp),
         nframe.toFrame.readWords _ _ (by omega) (by intro i hi; simp only [c]; omega), hcap1]
-  · simp only [ht3, blk628.res, rv_simp, x215, x29, ofNat_add_ofNat]
+  · simp only [ht3, blk594.res, rv_simp, x215, x29, ofNat_add_ofNat]
     rw [ofNat_slt_ofNat _ _ (by omega) (by omega)]
     by_cases h : j + 1 < p.h
     · rw [if_pos h]; simp; omega
     · rw [if_neg h]; simp; omega
-  · simp only [ht3, blk628.res, rv_simp, x215, ofNat_add_ofNat]
+  · simp only [ht3, blk594.res, rv_simp, x215, ofNat_add_ofNat]
   · rw [r3.get .x17, nregs.toRegsEq.get .x17, y17, show p.h - (j + 1) = p.h - 1 - j by omega]
   · exact (((tregs.trans r1).trans nregs.toRegsEq).trans r3).mono (by decide)
   · exact (tframe.trans ft13).mono (by
@@ -239,7 +239,7 @@ open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGol
 /-- **Tree levels** `1 .. h` (with capture of the path of leaf `e`). -/
 theorem tlevels_sim (p : TreePar) (t0 : MachineState) (ctx : TLevCtx p t0) (leaves : List Val)
     (hlen : leaves.length = 2 ^ p.h) (hvals : ∀ v ∈ leaves, v.length = 16)
-    (hslots : Slots t0 0xB0000 leaves) (hpc : t0.pc = pcOf 592) (h15 : t0.getReg .x15 = BitVec.ofNat 64 1)
+    (hslots : Slots t0 0xB0000 leaves) (hpc : t0.pc = pcOf 558) (h15 : t0.getReg .x15 = BitVec.ofNat 64 1)
     (h17 : t0.getReg .x17 = BitVec.ofNat 64 (2 ^ p.h)) :
     Sim image t0 (p.h * 853) ((List.range' 1 p.h).foldlM (levelStep (nodeInput p.lay p.tau) p.e)
       (leaves, [])) (TLevInv p t0 p.h) := by

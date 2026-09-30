@@ -1,4 +1,3 @@
-import SigGolfCandidate.Sign.PackData
 import SigGolfCandidate.Sign.Init
 
 /-!
@@ -6,7 +5,6 @@ import SigGolfCandidate.Sign.Init
 
 * `bytesAt t a n` : the `n` bytes at `a`; `bytesAt_add` (split), `bytesAt_of_readWords` (an aligned
   region holding `wordsOf l` has bytes `l`), `readBuffer_bytesAt`.
-* bytes of the pack's dwords (`extractByte_packDW`).
 -/
 
 set_option linter.unusedSimpArgs false
@@ -92,48 +90,3 @@ theorem bytesAt_of_readWords (t : MachineState) : ∀ (k a : Nat) (l : List Byte
 
 end SigGolfCandidate.Sign
 
-namespace SigGolfCandidate.Sign
-open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref SigGolfCandidate.Mem
-
-theorem lwuW_toNat (w : Word) (bo : Nat) :
-    (lwuW w bo).toNat = w.toNat / 2 ^ (32 * (bo / 4)) % 2 ^ 32 := by
-  simp only [lwuW, LoadKind.fromWord, extractWord32, BitVec.truncate_eq_setWidth,
-    BitVec.toNat_setWidth, BitVec.toNat_ushiftRight, Nat.shiftRight_eq_div_pow]
-  rw [Nat.mod_eq_of_lt (by
-    have := Nat.mod_lt (w.toNat / 2 ^ (bo / 4 * 32)) (show 2 ^ 32 > 0 by positivity); omega)]
-  rw [Nat.mul_comm (bo / 4) 32]
-
-theorem extractByte_lwuW (w : Word) (bo i : Nat) (hbo : bo = 0 ∨ bo = 4) (hi : i < 8) :
-    extractByte (lwuW w bo) i = if i < 4 then extractByte w (bo + i) else 0 := by
-  apply BitVec.eq_of_toNat_eq
-  have hw := w.isLt
-  rw [extractByte_toNat', lwuW_toNat]
-  split
-  · rw [extractByte_toNat']
-    rcases hbo with rfl | rfl <;> interval_cases i <;> simp <;> omega
-  · rcases hbo with rfl | rfl <;> interval_cases i <;> simp <;> omega
-
-theorem extractByte_pair (w1 w2 : Word) (bo1 bo2 i : Nat) (h1 : bo1 = 0 ∨ bo1 = 4)
-    (h2 : bo2 = 0 ∨ bo2 = 4) (hi : i < 8) :
-    extractByte (lwuW w1 bo1 + lwuW w2 bo2 <<< ((32#64).toNat % 64)) i =
-      if i < 4 then extractByte w1 (bo1 + i) else extractByte w2 (bo2 + (i - 4)) := by
-  apply BitVec.eq_of_toNat_eq
-  have hw1 := w1.isLt
-  have hw2 := w2.isLt
-  have ha := lwuW_toNat w1 bo1
-  have hb := lwuW_toNat w2 bo2
-  have hsum : (lwuW w1 bo1 + lwuW w2 bo2 <<< ((32#64).toNat % 64)).toNat =
-      (lwuW w1 bo1).toNat + 2 ^ 32 * (lwuW w2 bo2).toNat := by
-    rw [BitVec.toNat_add, BitVec.toNat_shiftLeft, show (32#64).toNat % 64 = 32 from rfl,
-      Nat.shiftLeft_eq]
-    have := Nat.mod_lt (w1.toNat / 2 ^ (32 * (bo1 / 4))) (show 2 ^ 32 > 0 by positivity)
-    have := Nat.mod_lt (w2.toNat / 2 ^ (32 * (bo2 / 4))) (show 2 ^ 32 > 0 by positivity)
-    rw [ha, hb]; omega
-  rw [extractByte_toNat', hsum, ha, hb]
-  split
-  · rw [extractByte_toNat']
-    rcases h1 with rfl | rfl <;> rcases h2 with rfl | rfl <;> interval_cases i <;> simp <;> omega
-  · rw [extractByte_toNat']
-    rcases h1 with rfl | rfl <;> rcases h2 with rfl | rfl <;> interval_cases i <;> simp <;> omega
-
-end SigGolfCandidate.Sign

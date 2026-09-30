@@ -31,7 +31,7 @@ def PCtx.A (P : PCtx) : Nat := P.a.toNat
 def PCtx.idx (P : PCtx) : Nat := idxOf P.A
 def PCtx.v (P : PCtx) : List Nat := leavesOf P.A
 
-def PCtx.ok (P : PCtx) : Prop := P.wl.length = 6348 ∧ P.pk.length = 16
+def PCtx.ok (P : PCtx) : Prop := P.wl.length = 6064 ∧ P.pk.length = 16
 
 theorem PCtx.idx_lt (P : PCtx) : P.idx < 2 ^ 34 := Nat.mod_lt _ (by decide)
 

@@ -27,8 +27,8 @@ theorem fetch_ecall (t : MachineState) (i : Nat) (hi : image.code[i]? = some 0x0
 
 theorem code141 : image.code[141]? = some 0x00000073#32 := by decide +kernel
 theorem code144 : image.code[144]? = some 0x00000073#32 := by decide +kernel
-theorem code381 : image.code[381]? = some 0x00000073#32 := by decide +kernel
-theorem code2843 : image.code[2843]? = some 0x00000073#32 := by decide +kernel
+theorem code377 : image.code[377]? = some 0x00000073#32 := by decide +kernel
+theorem code753 : image.code[753]? = some 0x00000073#32 := by decide +kernel
 
 /-- `signList` after the MAC check. -/
 def signRest (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) :=
@@ -37,7 +37,7 @@ def signRest (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) 
     | none => pure none
     | some (rho, N) =>
       buildPorsTree S (idxOf N) >>= fun p =>
-        signLayers S cache (idxOf N) 4 ((p.1.getD porsH []).getD 0 []) >>= fun r2 =>
+        signLayers S cache (idxOf N) 5 ((p.1.getD porsH []).getD 0 []) >>= fun r2 =>
           match r2 with
           | none => pure none
           | some lays => pure (some (serialize rho (porsOpening (sortLeaves (leavesOf N)) p.1 p.2) lays))
@@ -53,12 +53,12 @@ def ListPost (r : Option (List Byte)) (t : MachineState) : Prop :=
   fetch image t = some (.base .ECALL) ∧ t.getReg .x5 = 1 ∧
   match r with
   | none => t.getReg .x10 = 1
-  | some l => t.getReg .x10 = 0 ∧ readBuffer t 0x3300 6068 = ofList 6068 l
+  | some l => t.getReg .x10 = 0 ∧ readBuffer t 0x3300 5784 = ofList 5784 l
 
 /-- The zero buffers used as P slots / padding, never written by `sign` after the setup. -/
 def ZA (a : Nat) : Prop :=
   (0x110 ≤ a ∧ a < 0x120) ∨ (0x6B0 ≤ a ∧ a < 0x6C0) ∨ (0xD0 ≤ a ∧ a < 0xE0) ∨
-    (0x350 ≤ a ∧ a < 0x360) ∨ (0x1D0 ≤ a ∧ a < 0x1E0) ∨ (0xF0 ≤ a ∧ a < 0x100)
+    (0x350 ≤ a ∧ a < 0x360) ∨ (0x1D0 ≤ a ∧ a < 0x1E0) ∨ (0xF0 ≤ a ∧ a < 0x100) ∨ (0x560 ≤ a ∧ a < 0x580)
 
 /-- The sorted keys give the sorted leaf indices, strictly increasing and `< 2^14`. -/
 theorem keys_facts (N : Nat) (hadm : admissible N = true) :
@@ -95,7 +95,7 @@ theorem sched_le (N : Nat) (hadm : admissible N = true) :
 /-- Cycle bound after the MAC check. -/
 def restW : Nat :=
   (2 ^ 20 - 1 + 1) * digCyc + 2 + (34 + ((2 ^ 13 * 79 + (1 + 14 * (4 + (2 ^ 13 * 26 + 4)))) +
-    (11 + 15 * 345 + (20 + (4 * layCyc + topCyc + (2123 + 2))))))
+    (11 + 15 * 345 + (19 + (5 * layCyc + topCyc + (packCyc + 2))))))
 
 /-- Cycle bound of `signList`. -/
 def signW : Nat := 54 + (8 * 1025 + (53 + restW))
@@ -196,8 +196,11 @@ theorem signRest_sim (sk : SecretKey) (cache : Cache) (m : Message) (u : Machine
   have st3 : Statics (toList sk) t3 := by
     refine ⟨z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA]), z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA]),
       ?_, z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA]), z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA]),
-      z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA])⟩
-    rw [f03.readWords _ _ (by norm_num) (by intro i hi; simp only [digokW, porsW, schW']; omega), tS]
+      z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA]), ?_⟩
+    · rw [f03.readWords _ _ (by norm_num) (by intro i hi; simp only [digokW, porsW, schW']; omega), tS]
+    · rw [show (4 : Nat) = 2 + 2 from rfl, readWords_ofNat_add, z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA]),
+        z3rw _ (by norm_num) (by simp [ZA]) (by simp [ZA])]
+      rfl
   have rgW : ∀ a, regionA a → ¬ ((macW a ∨ digW a) ∨ ((digokW a ∨ porsW a) ∨ ((0x120 ≤ a ∧ a < 0x130) ∨
       schW' (schedule (sortLeaves (leavesOf N))).2.length a))) := by
     intro a ha
@@ -213,29 +216,27 @@ theorem signRest_sim (sk : SecretKey) (cache : Cache) (m : Message) (u : Machine
   have rhoB : rho.length = 16 := hrl
   set vs := sortLeaves (leavesOf N) with hvsdef
   have hvsl : vs.length = 15 := by rw [← hvs, List.length_map, hL]
-  refine (Sim.steps hs3 (Sim.steps hs4 (Sim.bind (W₂ := 2123 + 2)
-    (layers_sim (toList sk) (toList cache) hS hcache idx hidx 4 le_rfl M t4 hhead)
-    (fun r2 t5 h5 => ?_)))).mono (by generalize layCyc = A; generalize topCyc = B; omega) (fun _ _ h => h)
+  refine (Sim.steps hs3 (Sim.steps hs4 (Sim.bind (W₂ := packCyc + 2)
+    (layers_sim (toList sk) (toList cache) hS hcache idx hidx 5 le_rfl M t4 hhead)
+    (fun r2 t5 h5 => ?_)))).mono (by generalize layCyc = A; generalize topCyc = B; generalize packCyc = C; omega)
+    (fun _ _ h => h)
   rcases r2 with _ | lays
   · obtain ⟨pc5, x55, x510⟩ := h5
-    exact (Sim.pure ⟨fetch_ecall t5 381 code381 (by norm_num) pc5, x55, x510⟩).mono (by omega)
+    exact (Sim.pure ⟨fetch_ecall t5 377 code377 (by norm_num) pc5, x55, x510⟩).mono (by omega)
       (fun _ _ h => h)
   obtain ⟨hll, hst, pc5, x55, lframe⟩ := h5
-  obtain ⟨t6, hs6, pc6, hw6, hf6⟩ := pack_run t5 pc5
-  rw [pack_full] at hw6
-  have hf6' : Frame t5 t6 (fun x => packD ≤ x ∧ x < packD + 8 * 491) :=
-    hf6.mono (fun x hx => by simp only [packD] at hx ⊢; omega)
-  have hs7 := symRun_sound blk2841 codeAt_2841 t6 pc6 (by simp only [blk2841.res, rv_simp])
-  set t7 := blk2841.res.toState t6 with ht7
-  have hc7 : 2123 + blk2841.res.cycles = 2123 + 2 := rfl
+  obtain ⟨t6, hs6, pc6, hb6⟩ := pack_run t5 pc5
+  have hs7 := symRun_sound blk751 codeAt_751 t6 pc6 (by simp only [blk751.res, rv_simp])
+  set t7 := blk751.res.toState t6 with ht7
+  have hc7 : packCyc + blk751.res.cycles = packCyc + 2 := rfl
   have mem7 : ∀ a, t7.getMem a = t6.getMem a := by
-    intro a; rw [ht7, Result.toState_getMem, show blk2841.res.st.mem = [] from rfl, memEval_nil]
-  have by7 : bytesAt t7 0x3300 6068 = bytesAt t6 0x3300 6068 := by
+    intro a; rw [ht7, Result.toState_getMem, show blk751.res.st.mem = [] from rfl, memEval_nil]
+  have by7 : bytesAt t7 0x3300 5784 = bytesAt t6 0x3300 5784 := by
     unfold bytesAt; apply List.map_congr_left; intro i _
     simp only [MachineState.getByte, mem7]
   -- the frame from `t3` to `t5`
-  have f35 : Frame t3 t5 (layW 4) := fun a ha hW => by rw [lframe a ha hW, m4]
-  have nlay : ∀ a, 0x3300 ≤ a → a < 0x3300 + 2144 → ¬ layW 4 a := by
+  have f35 : Frame t3 t5 (layW 5) := fun a ha hW => by rw [lframe a ha hW, m4]
+  have nlay : ∀ a, 0x3300 ≤ a → a < 0x3300 + 2144 → ¬ layW 5 a := by
     intro a h1 h2; simp only [layW]; omega
   -- the head facts at `t5`
   have hrho5 : t5.readWords (BitVec.ofNat 64 0x3300) 2 = wordsOf rho := by
@@ -272,11 +273,11 @@ theorem signRest_sim (sk : SecretKey) (cache : Cache) (m : Message) (u : Machine
     · obtain ⟨r, hr, rfl⟩ := List.getElem_of_mem hhj
       exact rd3.2.2.2 r hr
   have hhead5 := head_bytes t5 rho rhoB vs p.1 p.2 hvsl hR hvals hslots
-  refine (Sim.pure_steps (hs6.trans hs7) ⟨fetch_ecall t7 2843 code2843 (by norm_num) (by
-      simp only [ht7, blk2841.res, rv_simp]),
-    by simp only [ht7, blk2841.res, rv_simp] <;> rfl, by simp only [ht7, blk2841.res, rv_simp] <;> rfl, ?_⟩).mono
+  refine (Sim.pure_steps (hs6.trans hs7) ⟨fetch_ecall t7 753 code753 (by norm_num) (by
+      simp only [ht7, blk751.res, rv_simp]),
+    by simp only [ht7, blk751.res, rv_simp] <;> rfl, by simp only [ht7, blk751.res, rv_simp] <;> rfl, ?_⟩).mono
     (by rw [hc7]) (fun _ _ h => h)
-  rw [readBuffer_bytesAt, by7, final_bytes t5 rho (porsOpening vs p.1 p.2) lays hhead5 hll hst t6 hw6 hf6']
+  rw [readBuffer_bytesAt, by7, final_bytes t5 rho (porsOpening vs p.1 p.2) lays hhead5 hll hst t6 hb6]
 
 theorem signList_sim (sk : SecretKey) (cache : Cache) (m : Message) :
     Sim image (s0 sk cache m) signW (signList (toList sk) (toList cache) (toList m)) ListPost := by
@@ -286,9 +287,9 @@ theorem signList_sim (sk : SecretKey) (cache : Cache) (m : Message) :
 
 
 /-- Final states: at a HALT whose output is `signRef`'s value. -/
-def SignPost (a : Option (Bytes 6068)) (t : MachineState) : Prop :=
+def SignPost (a : Option (Bytes 5784)) (t : MachineState) : Prop :=
   fetch image t = some (.base .ECALL) ∧ t.getReg .x5 = 1 ∧
-  a = if t.getReg .x10 = 0 then some (readBuffer t 0x3300 6068) else none
+  a = if t.getReg .x10 = 0 then some (readBuffer t 0x3300 5784) else none
 set_option maxRecDepth 100000 in
 
 theorem signRef_sim (sk : SecretKey) (cache : Cache) (m : Message) :
@@ -303,7 +304,7 @@ theorem signRef_sim (sk : SecretKey) (cache : Cache) (m : Message) :
     rw [h4, if_pos rfl, h5]; rfl
 
 theorem signW_lt : signW + 1 < CYCLE_LIMIT := by
-  unfold signW restW digCyc anCyc layCyc topCyc treeCyc tleafCyc CYCLE_LIMIT; norm_num
+  unfold signW restW digCyc anCyc layCyc topCyc treeCyc tleafCyc packCyc CYCLE_LIMIT; norm_num
 
 set_option maxRecDepth 100000 in
 /-- **Refinement** (value, #hash calls, #compressions) of the `sign` phase. -/

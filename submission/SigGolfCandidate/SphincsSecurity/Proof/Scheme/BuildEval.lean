@@ -117,7 +117,7 @@ theorem eval_buildChain (parameter : PublicParameter) (lay : Layer) (tree : Tree
         evalWithAnswerFn f (chainWalk parameter lay tree leaf chainIdx 0 (chainLength - 1)
           (evalWithAnswerFn f secret))) := by
   simp only [buildChain, evalWithAnswerFn_bind, evalWithAnswerFn_pure]
-  congr 1
+  refine Prod.ext rfl ?_
   have h := eval_recoverChain f parameter lay tree leaf chainIdx digit (evalWithAnswerFn f secret)
   simpa only [recoverChain] using h
 

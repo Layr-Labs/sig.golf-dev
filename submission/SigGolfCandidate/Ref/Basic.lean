@@ -71,15 +71,15 @@ def slice (l : List Byte) (off len : Nat) : List Byte := (l.drop off).take len
 
 /-! ## Parameters (SPEC-pors.md) -/
 
-def nChains : Nat := 42
-/-- The WOTS target sum (the 42 3-bit digits of an accepted encoding sum to it). -/
-def targetSum : Nat := 181
+def nChains : Nat := 32
+/-- The WOTS target sum (the 32 4-bit digits of an accepted encoding sum to it). -/
+def targetSum : Nat := 312
 /-- Old name of `targetSum`. -/
 abbrev target : Nat := targetSum
 /-- The number of hypertree layers `d`. -/
-def nLayers : Nat := 5
+def nLayers : Nat := 6
 /-- The layer heights, layer 0 (the cached top tree) first. -/
-def heights : List Nat := [11, 6, 6, 6, 5]
+def heights : List Nat := [11, 5, 5, 5, 4, 4]
 def totalH : Nat := 34
 /-- PORS tree height (`POR_H`). -/
 def porsH : Nat := 14
@@ -96,9 +96,9 @@ def aMax : Nat := 2 ^ 20
 /-- The counter limit `C_max`: the signer tries `c < cMax`, the verifier rejects `c ≥ cMax`. -/
 def cMax : Nat := 2 ^ 22
 /-- Signature bytes `S`. -/
-def sigBytes : Nat := 6068
+def sigBytes : Nat := 5784
 /-- Witness bytes `W`. -/
-def witBytes : Nat := 6348
+def witBytes : Nat := 6064
 
 /-- Height of hypertree layer `lay` (layer 0 = top): `heights[lay]`. -/
 def height (lay : Nat) : Nat := heights.getD lay 0
@@ -181,9 +181,9 @@ def IsDigestFmt (x : List Byte) : Prop := x.length = 96 ∧ x.getD 1 0 = byte 12
 instance (x : List Byte) : Decidable (IsDigestFmt x) :=
   inferInstanceAs (Decidable (x.length = 96 ∧ x.getD 1 0 = byte 12))
 
-/-- The split chain position `p' = (p mod 8) | (p div 8) << 8` (byte 4 = `mu - 1`, byte 5 = `i`
-for `p = 8 i + mu - 1`). -/
-def splitP (p : Nat) : Nat := p % 8 + 256 * (p / 8)
+/-- The split chain position `p' = (p mod 16) | (p div 16) << 8` (byte 4 = `mu - 1`, byte 5 = `i`
+for `p = 16 i + mu - 1`). -/
+def splitP (p : Nat) : Nat := p % 16 + 256 * (p / 16)
 
 /-- The heap index `2^(h - lam) + j` of node `j` of level `lam` of a tree of height `h`. -/
 def heapIndex (h lam j : Nat) : Nat := 2 ^ (h - lam) + j
@@ -249,11 +249,11 @@ instance `idx` first. -/
 (64 bytes; queried with `prf2`). -/
 def prfInput (S : List Byte) (lay tau e i : Nat) : List Byte := thInput (tweak 0 lay tau i e) S
 
-/-- Chain step `mu ∈ 1..7` of chain `i`: `tw(1, lay, tau, 8i + mu - 1, e) || P || v` (48 bytes). -/
+/-- Chain step `mu ∈ 1..15` of chain `i`: `tw(1, lay, tau, 16i + mu - 1, e) || P || v` (48 bytes). -/
 def chainInput (lay tau e i mu : Nat) (v : Val) : List Byte :=
-  thInput (tweak 1 lay tau (8 * i + mu - 1) e) v
+  thInput (tweak 1 lay tau (16 * i + mu - 1) e) v
 
-/-- OTS leaf of leaf `e`: `tw(2, lay, tau, 0, e) || P || pk_0 .. pk_41` (704 bytes). -/
+/-- OTS leaf of leaf `e`: `tw(2, lay, tau, 0, e) || P || pk_0 .. pk_31` (544 bytes, queried as 576). -/
 def leafInput (lay tau e : Nat) (ends : List Val) : List Byte :=
   thInput (tweak 2 lay tau 0 e) ends.flatten
 
@@ -363,18 +363,15 @@ def schedule (vs : List Nat) : List Nat × List (Nat × Nat) :=
   let st := (List.range vs.length).foldl (schedLeaf vs) ⟨[], [], []⟩
   (st.segs, st.reads)
 
-/-- The 21 3-bit digits of a 64-bit word: `(d >> 3r) & 7`, `r = 0..20`. -/
-def digitsOfWord (d : Nat) : List Nat := (List.range 21).map fun r => d / 8 ^ r % 8
+/-- The 16 4-bit digits of a 64-bit word: `(d >> 4r) & 15`, `r = 0..15`. -/
+def digitsOfWord (d : Nat) : List Nat := (List.range 16).map fun r => d / 16 ^ r % 16
 
 /-- TargetSum decoding of an encoding output `v` (first 16 bytes): `d0`, `d1` = the two LE 64-bit
-halves; reject if bit 63 of `d0` or of `d1` is set, else the 42 digits (21 of `d0`, then 21 of
-`d1`) if they sum to `targetSum`. -/
+halves; the 32 digits (16 of `d0`, then 16 of `d1`) if they sum to `targetSum`. -/
 def decodeDigits (v : Val) : Option (List Nat) :=
   let d0 := leNat (slice v 0 8)
   let d1 := leNat (slice v 8 8)
-  if d0 < 2 ^ 63 ∧ d1 < 2 ^ 63 then
-    let x := digitsOfWord d0 ++ digitsOfWord d1
-    if x.sum = targetSum then some x else none
-  else none
+  let x := digitsOfWord d0 ++ digitsOfWord d1
+  if x.sum = targetSum then some x else none
 
 end SigGolfCandidate.Ref

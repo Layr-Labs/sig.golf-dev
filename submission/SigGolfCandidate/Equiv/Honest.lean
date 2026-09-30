@@ -31,7 +31,7 @@ attribute [local reducible] SphincsSecurity.hashOutputBits SphincsSecurity.diges
 
 /-- The input length of each tag. -/
 def tagLen : Nat → Nat
-  | 0 => 64 | 1 => 48 | 2 => 704 | 3 => 64 | 4 => 52 | 7 => 64 | 8 => 64 | 9 => 48 | 10 => 64
+  | 0 => 64 | 1 => 48 | 2 => 544 | 3 => 64 | 4 => 52 | 7 => 64 | 8 => 64 | 9 => 48 | 10 => 64
   | 12 => 96 | 13 => 64 | 14 => 65568 | _ => 0
 
 /-- The position field (bytes `4 .. 8`, little endian) of an input. -/
@@ -119,7 +119,7 @@ theorem nodeHeight_take (z : List Byte) : Ref.nodeHeight z = Ref.nodeHeight (z.t
 
 theorem height_le (l : Nat) : Ref.height l ≤ 11 := by
   unfold Ref.height Ref.heights
-  rcases l with _ | _ | _ | _ | _ | l <;> simp
+  rcases l with _ | _ | _ | _ | _ | _ | l <;> simp
 
 theorem nodeHeight_le (z : List Byte) : Ref.nodeHeight z ≤ 11 := by
   unfold Ref.nodeHeight; exact height_le _
@@ -468,7 +468,7 @@ theorem hq_chainWalk (hP : P = 0) (lay : Layer) (tree : TreeIndex) (leaf : LeafI
       refine honest_tw 1 lay.val tree.val (SphincsSecurity.chainLength * c.val + (start + n)) leaf.val P _
         (by simp [tagLen, length_bytesLE]) (fun _ => ⟨hP, ?_⟩) (fun h => absurd h (by decide))
         (fun h => absurd h (by decide))
-      have e : SphincsSecurity.chainLength = 8 := rfl
+      have e : SphincsSecurity.chainLength = 16 := rfl
       have hc := c.isLt
       unfold SphincsSecurity.numChains at hc
       rw [e] at hstep ⊢
@@ -954,7 +954,7 @@ theorem hq_sign (sk : SphincsSecurity.Seeded.SecretKey) (hP : sk.parameter = 0)
   · exact hq_pure _
 
 /-- **expand** (abstract) makes only honest queries: one digest query with parameter `0`. -/
-theorem hq_aExpand (m : Message) (pk : SphincsSecurity.PublicKey) (σ : Bytes 6068) :
+theorem hq_aExpand (m : Message) (pk : SphincsSecurity.PublicKey) (σ : Bytes 5784) :
     HQ (aExpand m pk σ) :=
   hq_bind (hq_messageDigest _ rfl _ _ _) fun _ => hq_pure _
 

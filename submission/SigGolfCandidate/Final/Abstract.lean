@@ -160,7 +160,7 @@ theorem eval_aExpand_sign (seed : MasterSeed) (message : Message) {pk : PublicKe
   set d := Completeness.digestValue f sk message S.randomness with hd
   obtain ⟨wl, hlen, hexp, hwit⟩ := Equiv.expandOf_honest (Concrete.digestLeaves d) hadm d.toNat
     (fun r => Equiv.leafOf_eq d r) S.randomness secret node S.layers
-  refine ⟨Ref.ofList 6348 wl, ?_, ?_⟩
+  refine ⟨Ref.ofList 6064 wl, ?_, ?_⟩
   · unfold Equiv.aExpand
     rw [ofList_sigRho_compress, evalWithAnswerFn_bind, evalWithAnswerFn_pure]
     have e1 : evalWithAnswerFn f (Concrete.messageDigest (m := Equiv.AComp) 0 pk.root message S.randomness)

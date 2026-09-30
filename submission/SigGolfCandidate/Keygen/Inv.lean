@@ -10,9 +10,11 @@ open RiscvZkvm.Rv64 SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv SigGol
 /-- The masked-node region of the cache (`CACHE + 32`): the top tree is built here. -/
 abbrev REGION : Nat := 0x4B20
 
-/-- Doublewords kept at zero: the `P` parts of the PRF, chain, leaf and node buffers, and the
-zero half `CB+32 .. CB+48` of the value-last chain block (cleared once by the first block). -/
-def zeroKeys : List Nat := [1712, 1720, 208, 216, 224, 232, 848, 856, 464, 472, 0x4AE8, 0x4AF0, 0x4AF8]
+/-- Doublewords kept at zero: the `P` parts of the PRF, chain, leaf and node buffers, the
+zero half `CB+32 .. CB+48` of the value-last chain block (cleared once by the first block), and
+the leaf-hash padding `LB+544 .. LB+576` (never written). -/
+def zeroKeys : List Nat :=
+  [1712, 1720, 208, 216, 224, 232, 848, 856, 464, 472, 0x4AE8, 0x4AF0, 0x4AF8, 1376, 1384, 1392, 1400]
 
 /-- Facts that hold from the end of the first block until the final block. -/
 structure Base (W : List Word) (t : MachineState) : Prop where

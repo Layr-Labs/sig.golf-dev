@@ -171,16 +171,16 @@ theorem ftsOpenHashCost_eq : ftsOpenHashCost = 32767 := by
   rw [ftsOpenHashCost_def]
   decide
 
-theorem keygenHashCost_eq : keygenHashCost = 606207 := by
+theorem keygenHashCost_eq : keygenHashCost = 987135 := by
   rw [keygenHashCost_def, treeNodeHashCost_def, oneTimeKeyHashCost_def]
   decide
 
-theorem signHashBound_eq : signHashBound = 25083898 := by
+theorem signHashBound_eq : signHashBound = 32169977 := by
   rw [signHashBound, ftsOpenHashCost_eq, treeNodeHashCost_def, oneTimeKeyHashCost_def]
   decide
 
 /-- The ratio between the largest and the least cost of a signing request, rounded up. -/
-def signRatio : Nat := 254
+def signRatio : Nat := 341
 
 theorem signHashBound_le : signHashBound ≤ signRatio * signCharge := by
   rw [signHashBound_eq, signCharge_eq, signRatio]

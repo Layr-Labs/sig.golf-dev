@@ -572,7 +572,7 @@ theorem Avoids.buildLayerTreePaired_of_structural (parameter : PublicParameter) 
 
 /-! ## The invariant a signature keeps
 
-Signing runs its five counter searches one after another. Before each, no encoding input of a
+Signing runs its six counter searches one after another. Before each, no encoding input of a
 layer still to come is cached: key generation and every earlier step avoid them. -/
 
 /-- A computation that avoids an input, run from a cache missing it, leaves it missing. -/

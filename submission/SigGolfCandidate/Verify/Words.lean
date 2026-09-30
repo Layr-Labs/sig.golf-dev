@@ -164,7 +164,7 @@ theorem wordsOfN_zeros' (n : Nat) : wordsOfN n (zeros (8 * n)) = List.replicate 
 
 theorem pad64_chainInput (lay tau e i mu : Nat) (v : Val) (hv : v.length = 16) :
     pad64 (chainInput lay tau e i mu v) = queryOfWords 0
-      [BitVec.ofNat 64 (twLo 1 lay tau (8 * i + mu - 1)), BitVec.ofNat 64 (twHi tau e), 0, 0,
+      [BitVec.ofNat 64 (twLo 1 lay tau (16 * i + mu - 1)), BitVec.ofNat 64 (twHi tau e), 0, 0,
         vw0 v, vw1 v, 0, 0] := by
   unfold chainInput
   rw [pad64_thInput _ _ (by simp) 0 (by omega) (by omega), wordsOfN_tweak, hv,
@@ -222,23 +222,24 @@ theorem pad64_encInput (lay tau e : Nat) (M : Val) (hM : M.length = 16) (c : Nat
   simp only [w64, leNat_append, leNat_le32, leNat_zeros, Nat.mul_zero, Nat.add_zero]
   rfl
 
-theorem pad64_leafInput (lay tau e : Nat) (ends : List Val) (hl : ends.length = 42)
+theorem pad64_leafInput (lay tau e : Nat) (ends : List Val) (hl : ends.length = 32)
     (hv : ∀ v ∈ ends, v.length = 16) :
-    pad64 (leafInput lay tau e ends) = queryOfWords 10
+    pad64 (leafInput lay tau e ends) = queryOfWords 8
       ([BitVec.ofNat 64 (twLo 2 lay tau 0), BitVec.ofNat 64 (twHi tau e), 0, 0] ++
-        (ends.map fun v => [vw0 v, vw1 v]).flatten) := by
-  have hflat : ends.flatten.length = 672 := by
+        (ends.map fun v => [vw0 v, vw1 v]).flatten ++ [0, 0, 0, 0]) := by
+  have hflat : ends.flatten.length = 512 := by
     rw [List.length_flatten]
-    have : ends.map List.length = List.replicate 42 16 := by
+    have : ends.map List.length = List.replicate 32 16 := by
       apply List.ext_getElem (by simp [hl])
       intro i h1 h2
       simp only [List.getElem_map, List.getElem_replicate]
       exact hv _ (List.getElem_mem _)
     rw [this]; decide
   unfold leafInput
-  rw [pad64_thInput _ _ (by simp) 10 (by omega) (by omega), wordsOfN_tweak, hflat,
-    show 8 * 10 + 4 = 2 * ends.length + 0 by omega, wordsOfN_flatten_append ends hv]
-  simp [wordsOfN]
+  rw [pad64_thInput _ _ (by simp) 8 (by omega) (by omega), wordsOfN_tweak, hflat,
+    show 8 * 8 + 4 = 2 * ends.length + 4 by omega, wordsOfN_flatten_append ends hv,
+    show 64 * (8 + 1) - (32 + 512) = 8 * 4 by rfl, wordsOfN_zeros]
+  simp
 
 theorem pad64_digestInput (rho m : List Byte) (hr : rho.length = 16) (hm : m.length = 32) :
     pad64 (digestInput rho m) = queryOfWords 1

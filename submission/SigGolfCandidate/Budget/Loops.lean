@@ -8,8 +8,8 @@ value is at most 16 bytes long, so every query length (and hence its block count
 the tree builders only query tweak types `0..3` (hypertree) or `8..10` (PORS), the counter search
 only type `4` at its layer, and the digest search only types `7` and `12`.
 
-Compressions: an OTS leaf `21 + 2 * 21 * 7 + 11 = 326` (paired secrets), a tree of height `h`
-`326 * 2^h + 2^h - 1`, keygen 674814, the PORS tree `2^13 * 3 + (2^14 - 1) = 40959` (paired
+Compressions: an OTS leaf `16 + 2 * 16 * 15 + 9 = 505` (paired secrets; the 544-byte leaf input
+is hashed as 9 blocks), a tree of height `h` `505 * 2^h + 2^h - 1`, keygen 1041406, the PORS tree `2^13 * 3 + (2^14 - 1) = 40959` (paired
 secrets, two leaves per pair, then the levels).
 -/
 
@@ -187,9 +187,9 @@ theorem spec_prf2 {P : Query → Prop} {β : Type} {R : β → Prop} (x : List B
   exact hf _ (by simp) (by simp)
 
 theorem spec_chainSteps (lay tau e i x : Nat) (v : Val) (hv : v.length ≤ 16) :
-    Spec PT (fun r : Val × Val => r.1.length ≤ 16) 7 (chainSteps lay tau e i x v) := by
+    Spec PT (fun r : Val × Val => r.1.length ≤ 16) 15 (chainSteps lay tau e i x v) := by
   unfold chainSteps
-  refine Spec.foldlM_range'_le (P := PT) 1 7 _ (fun _ (st : Val × Val) => st.1.length ≤ 16)
+  refine Spec.foldlM_range'_le (P := PT) 1 15 _ (fun _ (st : Val × Val) => st.1.length ≤ 16)
     (fun _ => 1) (v, v) hv (fun i' _ st hst => ?_) (fun _ h => h) (by simp)
   refine spec_hash16_bind (chainInput lay tau e i (1 + i') st.1) ?_
     (blocksFmt_le _ 1 (by simp [chainInput]; omega) le_rfl)
@@ -197,16 +197,16 @@ theorem spec_chainSteps (lay tau e i x : Nat) (v : Val) (hv : v.length ≤ 16) :
   unfold PT chainInput; rw [qbyte_tag]; omega
 
 theorem spec_buildLeaf (S : List Byte) (hS : S.length = 32) (lay tau e : Nat) (x : List Nat) :
-    Spec PT (fun r : Val × List Val => r.1.length ≤ 16) 326 (buildLeaf S lay tau e x) := by
+    Spec PT (fun r : Val × List Val => r.1.length ≤ 16) 505 (buildLeaf S lay tau e x) := by
   unfold buildLeaf
   refine Spec.bind' (Spec.foldlM_range (P := PT) (nChains / 2) _
-    (fun i (st : List Val × List Val) => st.1.length = 2 * i ∧ AllShort st.1) (fun _ => 15)
+    (fun i (st : List Val × List Val) => st.1.length = 2 * i ∧ AllShort st.1) (fun _ => 31)
     ([], []) ⟨rfl, AllShort.nil⟩ (fun k _ st hst => ?_)) (fun st hst => ?_)
-    (show (∑ _i ∈ range (nChains / 2), 15) + 11 ≤ 326 by decide)
+    (show (∑ _i ∈ range (nChains / 2), 31) + 9 ≤ 505 by decide)
   · obtain ⟨h1, h2⟩ := prf_ok S hS lay tau e k
-    refine spec_prf2 _ h1 h2 (l := 14) (fun s hs0 hs1 => ?_) (by omega)
+    refine spec_prf2 _ h1 h2 (l := 30) (fun s hs0 hs1 => ?_) (by omega)
     obtain ⟨s0, s1⟩ := s
-    refine (spec_chainSteps lay tau e (2 * k) _ s0 hs0).bind' (l := 7) (fun r0 hr0 => ?_) le_rfl
+    refine (spec_chainSteps lay tau e (2 * k) _ s0 hs0).bind' (l := 15) (fun r0 hr0 => ?_) le_rfl
     obtain ⟨v0, c0⟩ := r0
     refine (spec_chainSteps lay tau e (2 * k + 1) _ s1 hs1).bind' (l := 0)
       (fun r1 hr1 => ?_) (by omega)
@@ -217,8 +217,8 @@ theorem spec_buildLeaf (S : List Byte) (hS : S.length = 32) (lay tau e : Nat) (x
     · exact hst.2 w hw
     · exact hr0
     · exact hr1
-  refine spec_hash16_bind (leafInput lay tau e st.1) ?_ (blocksFmt_le _ 11 ?_ (by omega))
-    (fun v hv => Spec.pure _ 0 (by simp [hv])) (show 11 + 0 ≤ 11 by omega)
+  refine spec_hash16_bind (leafInput lay tau e st.1) ?_ (blocksFmt_le _ 9 ?_ (by omega))
+    (fun v hv => Spec.pure _ 0 (by simp [hv])) (show 9 + 0 ≤ 9 by omega)
   · unfold PT leafInput; rw [qbyte_tag]; omega
   · have := length_flatten_le hst.2
     simp only [leafInput, length_thInput, length_tweak, hst.1] at this ⊢
@@ -226,18 +226,18 @@ theorem spec_buildLeaf (S : List Byte) (hS : S.length = 32) (lay tau e : Nat) (x
 
 theorem spec_buildLeaves (S : List Byte) (hS : S.length = 32) (lay tau h cap : Nat)
     (x : List Nat) :
-    Spec PT (fun r : List Val × List Val => r.1.length = 2 ^ h ∧ AllShort r.1) (2 ^ h * 326)
+    Spec PT (fun r : List Val × List Val => r.1.length = 2 ^ h ∧ AllShort r.1) (2 ^ h * 505)
       (buildLeaves S lay tau h cap x) := by
   unfold buildLeaves
   refine Spec.foldlM_range_le (P := PT) (2 ^ h) _
-    (fun i (st : List Val × List Val) => st.1.length = i ∧ AllShort st.1) (fun _ => 326) ([], [])
+    (fun i (st : List Val × List Val) => st.1.length = i ∧ AllShort st.1) (fun _ => 505) ([], [])
     ⟨rfl, AllShort.nil⟩ (fun i _ st hst => ?_) (fun _ h => h) (by simp)
   refine (spec_buildLeaf S hS lay tau i x).bind' (l := 0) (fun r hr => ?_) (by omega)
   obtain ⟨v, c⟩ := r
   exact Spec.pure _ 0 ⟨by simp [hst.1], hst.2.append hr⟩
 
 /-- Compressions of a hypertree tree of height `h`. -/
-def treeCost (h : Nat) : Nat := 2 ^ h * 326 + (2 ^ h - 1)
+def treeCost (h : Nat) : Nat := 2 ^ h * 505 + (2 ^ h - 1)
 
 theorem spec_buildTree (S : List Byte) (hS : S.length = 32) (lay tau h cap : Nat)
     (x : List Nat) :
@@ -251,8 +251,8 @@ theorem spec_buildTree (S : List Byte) (hS : S.length = 32) (lay tau h cap : Nat
   obtain ⟨root, path⟩ := r'
   exact Spec.pure _ 0 hr'
 
-theorem treeCost_6 : treeCost 6 = 20927 := by decide
-theorem treeCost_5 : treeCost 5 = 10463 := by decide
+theorem treeCost_5 : treeCost 5 = 16191 := by decide
+theorem treeCost_4 : treeCost 4 = 8095 := by decide
 
 /-! ## keygen -/
 
@@ -320,10 +320,10 @@ theorem spec_maskLevel {P : Query → Prop} (hP : ∀ q, qbyte q 1 = 13 → P q)
 theorem topN_succ (l : Nat) : topN (l + 1) = topN l + 2 ^ (topH - l) := by
   simp [topN, List.range_succ]
 
-/-- Compressions of keygen: `2048 * 326 + 2047 + 4094 + 1025`. -/
-def keygenCost : Nat := 2 ^ 11 * 326 + (2 ^ 11 - 1) + ∑ l ∈ range 11, 2 ^ (11 - l) + 1025
+/-- Compressions of keygen: `2048 * 505 + 2047 + 4094 + 1025`. -/
+def keygenCost : Nat := 2 ^ 11 * 505 + (2 ^ 11 - 1) + ∑ l ∈ range 11, 2 ^ (11 - l) + 1025
 
-theorem keygenCost_eq : keygenCost = 674814 := by decide
+theorem keygenCost_eq : keygenCost = 1041406 := by decide
 
 theorem spec_keygenRef (sk : Bytes 32) :
     Spec PK (fun _ => True) keygenCost (keygenRef sk) := by
@@ -333,7 +333,7 @@ theorem spec_keygenRef (sk : Bytes 32) :
   refine Spec.bind' (Q := fun _ => True) (l := 0) ?_ (fun _ _ => Spec.pure _ 0 trivial) le_rfl
   rw [topH_eq]
   refine Spec.bind' (((spec_buildLeaves (toList sk) hS 0 0 11 0 []).mono hPT fun _ h => h))
-    (fun r hr => ?_) (show 2 ^ 11 * 326 + ((2 ^ 11 - 1) + ∑ l ∈ range 11, 2 ^ (11 - l) + 1025) ≤ _
+    (fun r hr => ?_) (show 2 ^ 11 * 505 + ((2 ^ 11 - 1) + ∑ l ∈ range 11, 2 ^ (11 - l) + 1025) ≤ _
       by omega)
   obtain ⟨leaves, _⟩ := r
   refine Spec.bind' ((spec_buildAllLevels (nodeOK_nodeInput 0 0) 11 leaves hr.1 hr.2).mono hPT
@@ -422,16 +422,16 @@ theorem enc_ok (lay tau e : Nat) (M : Val) (hM : M.length ≤ 16) (c : Nat) (hla
   · unfold encInput; rw [qbyte_lay]; omega
 
 theorem decodeDigits_some {v : Val} {x : List Nat} (h : decodeDigits v = some x) :
-    x.length = 42 ∧ x.sum = targetSum := by
+    x.length = 32 ∧ x.sum = targetSum := by
   unfold decodeDigits at h
   simp only at h
-  split_ifs at h with h1 h2
+  split_ifs at h with h1
   cases h
-  exact ⟨by simp [digitsOfWord], h2⟩
+  exact ⟨by simp [digitsOfWord], h1⟩
 
 /-- The counter search's results: accepted digit words. -/
 def DigOK (o : Option (Nat × List Nat)) : Prop :=
-  ∀ c x, o = some (c, x) → x.length = 42 ∧ x.sum = targetSum
+  ∀ c x, o = some (c, x) → x.length = 32 ∧ x.sum = targetSum
 
 theorem spec_searchCounter (lay tau e : Nat) (M : Val) (hM : M.length ≤ 16) (hlay : lay < 256) :
     ∀ fuel c, Spec (PC lay) DigOK fuel (searchCounter lay tau e M c fuel) := by

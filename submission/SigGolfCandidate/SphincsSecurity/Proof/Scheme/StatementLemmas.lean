@@ -161,11 +161,11 @@ theorem sampleRandomness_eq :
 
 example : ∑ lay : Layer, layerHeight lay = totalHeight := by decide
 
-example : (List.ofFn fun lay : Layer => layerHeight lay) = [11, 6, 6, 6, 5] := by decide
+example : (List.ofFn fun lay : Layer => layerHeight lay) = [11, 5, 5, 5, 4, 4] := by decide
 
-example : (List.ofFn fun lay : Layer => heightAbove lay) = [0, 11, 17, 23, 29] := by decide
+example : (List.ofFn fun lay : Layer => heightAbove lay) = [0, 11, 16, 21, 26, 30] := by decide
 
-example : (List.ofFn fun lay : Layer => heightBelow lay) = [23, 17, 11, 5, 0] := by decide
+example : (List.ofFn fun lay : Layer => heightBelow lay) = [23, 18, 13, 8, 4, 0] := by decide
 
 /-- The digest is the whole oracle output: `h + k * 14 = 244` bits are read, and `12` are unused. -/
 example : messageDigestBits = 256 ∧ totalHeight + ftsOpenings * ftsTreeHeight ≤ messageDigestBits := by

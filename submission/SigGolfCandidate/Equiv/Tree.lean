@@ -127,7 +127,7 @@ theorem hash16_chain (P0 : SphincsSecurity.PublicParameter) (hP : P0 = 0) (p : N
   congr 3
 
 /-- The reference chain fold from position `s` (steps `s+1 .. s+n`). -/
-theorem chainFold_eq (s n : Nat) (hsn : s + n ≤ 7) (v : Digest) :
+theorem chainFold_eq (s n : Nat) (hsn : s + n ≤ 15) (v : Digest) :
     (List.range' (s + 1) n).foldlM
         (fun v mu => Ref.hash16 (Ref.chainInput lay tree leaf c mu v)) (dv v) =
       dv <$> relabel fmtQ (SphincsSecurity.Concrete.chainWalk (m := AComp) 0 lay tree leaf c s n v) := by
@@ -158,11 +158,11 @@ theorem capFold_notin {m : Type → Type} [Monad m] [LawfulMonad m] {V : Type}
     rw [if_neg hy]
     exact ih (fun h => hx (List.mem_cons_of_mem _ h)) v
 
-/-- `Ref.chainSteps` with a capture position `x ≤ 7`: the value after `x` steps and the end. -/
-theorem chainSteps_split (lay tau e i x : Nat) (hx : x ≤ 7) (v : Ref.Val) :
+/-- `Ref.chainSteps` with a capture position `x ≤ 15`: the value after `x` steps and the end. -/
+theorem chainSteps_split (lay tau e i x : Nat) (hx : x ≤ 15) (v : Ref.Val) :
     Ref.chainSteps lay tau e i x v =
       (List.range' 1 x).foldlM (fun v mu => Ref.hash16 (Ref.chainInput lay tau e i mu v)) v >>=
-        fun w => (fun z => (z, w)) <$> (List.range' (x + 1) (7 - x)).foldlM
+        fun w => (fun z => (z, w)) <$> (List.range' (x + 1) (15 - x)).foldlM
           (fun v mu => Ref.hash16 (Ref.chainInput lay tau e i mu v)) w := by
   unfold Ref.chainSteps
   have hc := fun x l hx a c => capFold_notin
@@ -172,8 +172,8 @@ theorem chainSteps_split (lay tau e i x : Nat) (hx : x ≤ 7) (v : Ref.Val) :
     rw [hc 0 _ (by simp)]
     simp
   | succ k =>
-    have hsplit : List.range' 1 7 = List.range' 1 k ++ (1 + k) :: List.range' (1 + k + 1) (6 - k) := by
-      rw [← List.range'_succ, show 6 - k + 1 = 7 - k by omega, List.range'_append_1]
+    have hsplit : List.range' 1 15 = List.range' 1 k ++ (1 + k) :: List.range' (1 + k + 1) (14 - k) := by
+      rw [← List.range'_succ, show 14 - k + 1 = 15 - k by omega, List.range'_append_1]
       congr 1; omega
     rw [hsplit, List.foldlM_append, hc (k + 1) _ (by simp; omega)]
     simp only [map_bind, bind_map_left, List.foldlM_cons, bind_assoc, pure_bind]
@@ -182,10 +182,10 @@ theorem chainSteps_split (lay tau e i x : Nat) (hx : x ≤ 7) (v : Ref.Val) :
     simp only [List.foldlM_append, List.foldlM_cons, List.foldlM_nil, bind_assoc, bind_pure]
     congr 1; funext w; congr 1; funext z
     rw [if_pos (by omega), hc (k + 1) _ (by simp), show k + 1 + 1 = 1 + k + 1 by omega,
-      show 7 - (k + 1) = 6 - k by omega]
+      show 15 - (k + 1) = 14 - k by omega]
 
 theorem chainSteps_eq (lay : Layer) (tree : TreeIndex) (leaf : LeafIndex)
-    (c : ChainIndex) (d : Nat) (hd : d ≤ 7) (s : Digest) :
+    (c : ChainIndex) (d : Nat) (hd : d ≤ 15) (s : Digest) :
     Ref.chainSteps lay tree leaf c d (dv s) =
       (fun r => (dv r.2, dv r.1)) <$> relabel fmtQ
         (SphincsSecurity.Concrete.buildChain (m := AComp) 0 lay tree leaf c (pure s) d) := by
@@ -196,8 +196,8 @@ theorem chainSteps_eq (lay : Layer) (tree : TreeIndex) (leaf : LeafIndex)
   rw [Nat.zero_add] at h1
   rw [h1, bind_map_left]
   congr 1; funext w
-  have h2 := chainFold_eq lay tree leaf c d (7 - d) (by omega) w
-  rw [h2, show SphincsSecurity.chainLength - 1 - d = 7 - d by
+  have h2 := chainFold_eq lay tree leaf c d (15 - d) (by omega) w
+  rw [h2, show SphincsSecurity.chainLength - 1 - d = 15 - d by
     simp [SphincsSecurity.chainLength, SphincsSecurity.winternitzBits]]
   simp only [Functor.map_map, map_eq_bind_pure_comp, bind_assoc, pure_bind]
   rfl
@@ -226,15 +226,15 @@ theorem flatten_unpairChains {α β : Type} (f : SphincsSecurity.ChainPair → �
     (List.ofFn fun j : SphincsSecurity.ChainPair => [G (f j).1, G (f j).2]).flatten =
       List.ofFn fun c : ChainIndex => G (SphincsSecurity.unpairChains f c) := by
   let F : Nat → β := fun i =>
-    G (SphincsSecurity.unpairChains f ⟨i % 42, Nat.mod_lt _ (by decide)⟩)
+    G (SphincsSecurity.unpairChains f ⟨i % 32, Nat.mod_lt _ (by decide)⟩)
   have e1 : (List.ofFn fun j : SphincsSecurity.ChainPair => [G (f j).1, G (f j).2]) =
-      List.ofFn fun j : Fin 21 => [F (2 * j.val), F (2 * j.val + 1)] := by
+      List.ofFn fun j : Fin 16 => [F (2 * j.val), F (2 * j.val + 1)] := by
     apply List.ofFn_inj.mpr
     funext j
-    have hj : j.val < 21 := j.isLt
-    have p1 : SphincsSecurity.chainPairOf ⟨2 * j.val % 42, Nat.mod_lt _ (by decide)⟩ = j := by
+    have hj : j.val < 16 := j.isLt
+    have p1 : SphincsSecurity.chainPairOf ⟨2 * j.val % 32, Nat.mod_lt _ (by decide)⟩ = j := by
       apply Fin.ext; simp [SphincsSecurity.chainPairOf]; omega
-    have p2 : SphincsSecurity.chainPairOf ⟨(2 * j.val + 1) % 42, Nat.mod_lt _ (by decide)⟩ = j := by
+    have p2 : SphincsSecurity.chainPairOf ⟨(2 * j.val + 1) % 32, Nat.mod_lt _ (by decide)⟩ = j := by
       apply Fin.ext; simp [SphincsSecurity.chainPairOf]; omega
     simp only [F, SphincsSecurity.unpairChains, p1, p2]
     rw [if_pos (by simp), if_neg (by simp)]
@@ -255,7 +255,7 @@ abbrev absPair (seed : MasterSeed) (lay : Layer) (tree : TreeIndex) (leaf : Leaf
     (pure secrets.2) (enc (SphincsSecurity.oddChain pair)).val
   return (first, second)
 
-theorem digit_le (enc : Encoding) (c : ChainIndex) : (enc c).val ≤ 7 := by
+theorem digit_le (enc : Encoding) (c : ChainIndex) : (enc c).val ≤ 15 := by
   have := (enc c).isLt
   simp [SphincsSecurity.chainLength, SphincsSecurity.winternitzBits] at this; omega
 
@@ -307,7 +307,7 @@ theorem buildLeaf_eq (seed : MasterSeed) (lay : Layer) (tree : TreeIndex) (leaf 
 theorem fst_chainSteps (lay tau e i x : Nat) (v : Ref.Val) :
     Prod.fst <$> Ref.chainSteps lay tau e i x v = Prod.fst <$> Ref.chainSteps lay tau e i 0 v := by
   unfold Ref.chainSteps
-  have h := fun y => map_fst_foldlM (m := OracleComp SigGolfCandidate.Legacy.HashSpec) (List.range' 1 7)
+  have h := fun y => map_fst_foldlM (m := OracleComp SigGolfCandidate.Legacy.HashSpec) (List.range' 1 15)
     (fun (a : Ref.Val) mu => Ref.hash16 (Ref.chainInput lay tau e i mu a)) (fun _ _ r => r)
     (fun st mu r => if mu = y then r else st.2) (v, v)
   exact (h x).trans (h 0).symm

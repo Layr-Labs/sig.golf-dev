@@ -1,5 +1,4 @@
 import SigGolfCandidate.Verify.PorsMem
-import SigGolfCandidate.Verify.LayerRuns
 
 /-!
 # The PORS stack machine: expected symbolic results of its code blocks
@@ -41,9 +40,8 @@ def tailPc (V c : Nat) : Nat := if c = 2 then entry0Pc V + 2 else ladPc V c 13 +
 def dispTailPc (c : Nat) : Nat := tailPc 0 c + 6
 /-- Dispatch copies: leaves `0..14`, merge tails `15..17`. -/
 def dispPc (c : Nat) : Nat := if c < 15 then dispLeafPc c else dispTailPc (c - 15)
-/-- The start of the layer-4 precode after the root tail copy `c`. -/
-def f4Pc (c : Nat) : Nat := if c = 2 then layerPcTab.getD 4 [] |>.getD 0 0
-  else if c = 1 then (layerPcTab.getD 4 []).getD 1 0 else (layerPcTab.getD 4 []).getD 2 0
+/-- The hypertree layer section (`layers`): every root tail copy ends with `jal zero, layers`. -/
+def layersPc : Nat := 4096
 
 /-! ## Expressions -/
 
@@ -191,7 +189,7 @@ def tailCheck (c : Nat) : Bool :=
       (tailKnown d |>.map fun p => if p.1 = .x15 then (.x15, BitVec.ofNat 64 (stkOf d + 80)) else p)
       [.x14, .x16, .x17, .x20, .x22, .x23, .x24, .x29])
 
-/-! ### The root tail (checks, layer constants) -/
+/-! ### The root tail (checks, jump to the layer section) -/
 
 def fBr1 (d : Bool) : Br := ⟨.ltu, cw 118, .reg .x29, d⟩
 def fBr2 (d : Bool) : Br := ⟨.ne, addC (.reg .x23) (-1#64), .c 0, d⟩
@@ -199,12 +197,12 @@ def fBr3 (d : Bool) : Br := ⟨.ne, .reg .x15, cw EMPTY, d⟩
 
 def tailFKnown : List (Reg × Word) := gkP ++ [(.x12, 0x120)]
 
-def tailFSpec (c : Nat) : Spec :=
-  ⟨[], [], f4Pc c, false, 22, [fBr3 false, fBr2 false, fBr1 false], none⟩
+def tailFSpec : Spec :=
+  ⟨[], [], layersPc, false, 7, [fBr3 false, fBr2 false, fBr1 false], none⟩
 
 def tailFCheck (c : Nat) : Bool :=
-  pspecB gkL (runAt tailFKnown [f4Pc c] (tailPc 2 c) [.br false, .br false, .br false]) (tailFSpec c) []
-    l4K [.x22] &&
+  pspecB gkP (runAt tailFKnown [layersPc] (tailPc 2 c) [.br false, .br false, .br false]) tailFSpec []
+    tailFKnown [.x22] &&
   pspecB [] (runAt tailFKnown [] (tailPc 2 c) [.br true]) (rejSpec 5 [fBr1 true]) [] [] [] &&
   pspecB [] (runAt tailFKnown [] (tailPc 2 c) [.br false, .br true]) (rejSpec 7 [fBr2 true, fBr1 false]) [] [] [] &&
   pspecB [] (runAt tailFKnown [] (tailPc 2 c) [.br false, .br false, .br true])
@@ -265,8 +263,8 @@ def k0 : List (Reg × Word) :=
 def gkD : List (Reg × Word) := baseK
 def dgK : List (Reg × Word) := gkD ++ [(.x10, 0x20), (.x11, 64), (.x12, 0x160)]
 
-/-- The counters: two doublewords and a word at `WIT + 6328`. -/
-def ctrX : E := .bin .or (.bin .or (ldE 8376) (ldE 8384)) (.un (.ld .wu 0) (ldE 8392))
+/-- The six counters: three doublewords at `WIT + 6040`. -/
+def ctrX : E := .bin .or (.bin .or (ldE 8088) (ldE 8096)) (ldE 8104)
 def ctrE' : E := .bin .srl (.bin .or ctrX (.bin .sll ctrX (cw 32))) (cw 54)
 
 def specStartOk : Spec :=

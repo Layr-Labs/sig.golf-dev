@@ -7,7 +7,7 @@ import SigGolfCandidate.Sign.Mac
 * block 0 (0 .. 53): `S`, `m` into the buffers, the tag (cache bytes 0 .. 32) into `x13 .. x16`,
   the in-place MAC input `tw_mac | P | S | region | 0^32` at `CACHE - 32`; HASH at 54.
 * 55 .. 62: compare the answer (`DO`) with the tag, dword by dword (`fail_mac` at 84 .. 86).
-* 63 .. 64: `LIM = 2^20`, then branch to the randomizer packer at 2844 .. 2886;
+* 63 .. 64: `LIM = 2^20`, then branch to the randomizer packer at 754 .. 796;
   the digest loop starts at 65.
 
 `mac_sim` : the machine refines `H(macInput S region) >>= fun tag => if tag = cacheTag then rest
@@ -254,12 +254,12 @@ theorem mac_sim (sk : SecretKey) (cache : Cache) (m : Message) {β : Type}
     intro q h1 h6 h7
     rw [r7.get q (by simp [h6, h7]), r6.get q (by simp [h1]), r5.get q (by simp [h1]),
       r4.get q (by simp [h1]), r3.get q (by simp [h1]), r2]
-  have pc7 : t7.pc = pcOf 2844 := by simp only [ht7, blk63.res, rv_simp]
-  have hs8 := symRun_sound blk2844 codeAt_2844 t7 pc7 (by simp only [blk2844.res, rv_simp])
-  rw [blk2844_cycles] at hs8
-  set t8 := blk2844.res.toState t7 with ht8
-  have f8 : Frame t7 t8 (fun a => 0x780 ≤ a ∧ a < 0x7c0) := blk2844_frame t7
-  have r8 := blk2844_regs t7
+  have pc7 : t7.pc = pcOf 754 := by simp only [ht7, blk63.res, rv_simp]
+  have hs8 := symRun_sound blk754 codeAt_754 t7 pc7 (by simp only [blk754.res, rv_simp])
+  rw [blk754_cycles] at hs8
+  set t8 := blk754.res.toState t7 with ht8
+  have f8 : Frame t7 t8 (fun a => 0x780 ≤ a ∧ a < 0x7c0) := blk754_frame t7
+  have r8 := blk754_regs t7
   have fr : Frame s t7 macW := by
     intro x hx hW
     rw [n7, f2.getMem hx (by simp only [macW, setupW] at hW; omega),
@@ -289,12 +289,12 @@ theorem mac_sim (sk : SecretKey) (cache : Cache) (m : Message) {β : Type}
           (fun i hi => by rw [show a + 8 + 8 * i = a + 8 * (i + 1) by ring]; exact hout _ (by omega))]
       rfl
   have ok : MacOk sk cache m t8 := by
-    refine ⟨blk2844_pc t7, ⟨?_, ?_, ?_, ?_, ?_⟩, ?_, ?_, ?_, ?_, fr8⟩
+    refine ⟨blk754_pc t7, ⟨?_, ?_, ?_, ?_, ?_⟩, ?_, ?_, ?_, ?_, fr8⟩
     · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
         fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_rbS, s0_readWords_sk]
     · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
         fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_rbM, s0_readWords_msg]
-    · have hw := blk2844_words t7
+    · have hw := blk754_words t7
       rw [← ht8] at hw
       rw [hw]
       rw [f8.getMem (by norm_num) (by omega), f8.getMem (by norm_num) (by omega),
@@ -308,7 +308,7 @@ theorem mac_sim (sk : SecretKey) (cache : Cache) (m : Message) {β : Type}
     · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
         fu _ _ (by norm_num) (by intro i hi; simp only [macW, setupW]; omega), s0_readWords_msg]
     · rw [r8.get .x5, g7 .x5 (by decide) (by decide) (by decide), x5]
-    · exact blk2844_x6 t7
+    · exact blk754_x6 t7
     · rw [r8.get .x7]; simp only [ht7, blk63.res, rv_simp]; rfl
     · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
         fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_pbS, s0_readWords_sk]

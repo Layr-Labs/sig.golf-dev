@@ -23,87 +23,39 @@ irreducible_def decode (digest : Digest) : Option Encoding := TargetSum.decodeDi
 theorem decode_valid {digest : Digest} {word : Encoding} (hdecode : decode digest = some word) : Valid word := by
   rw [decode_def] at hdecode
   rw [Valid_def]
-  by_cases hvalid : digest.getLsbD 63 = false ∧ digest.getLsbD 127 = false ∧ TargetSum.Valid (TargetSum.digestEncoding digest)
+  by_cases hvalid : TargetSum.Valid (TargetSum.digestEncoding digest)
   · rw [TargetSum.decodeDigest, if_pos hvalid] at hdecode
-    exact Option.some.inj hdecode ▸ hvalid.2.2
+    exact Option.some.inj hdecode ▸ hvalid
   · rw [TargetSum.decodeDigest, if_neg hvalid] at hdecode
     simp at hdecode
 
-private theorem digest_eq_of_encoding_eq_of_padding {left right : Digest}
-    (hencoding : TargetSum.digestEncoding left = TargetSum.digestEncoding right)
-    (hleft63 : left.getLsbD 63 = false) (hleft127 : left.getLsbD 127 = false)
-    (hright63 : right.getLsbD 63 = false) (hright127 : right.getLsbD 127 = false) :
-    left = right := by
+/-- The digits tile the digest, so a digest is determined by its digits. -/
+private theorem digest_eq_of_encoding_eq {left right : Digest}
+    (hencoding : TargetSum.digestEncoding left = TargetSum.digestEncoding right) : left = right := by
   apply BitVec.eq_of_getLsbD_eq
   intro bit hbit
-  by_cases hlow : bit < 63
-  · let chainIdx : ChainIndex := ⟨bit / 3, by
-      have : bit / 3 < 21 := by omega
-      exact lt_of_lt_of_le this (by decide)⟩
-    have hchain := congrFun hencoding chainIdx
-    change (left.extractLsb' (TargetSum.digitOffset chainIdx) winternitzBits).toFin =
-      (right.extractLsb' (TargetSum.digitOffset chainIdx) winternitzBits).toFin at hchain
-    have hword := BitVec.toFin_injective hchain
-    have hchainVal : chainIdx.val = bit / 3 := rfl
-    have hoffset : TargetSum.digitOffset chainIdx = 3 * chainIdx.val := by
-      rw [TargetSum.digitOffset, if_pos]
-      · norm_num [winternitzBits]
-      · rw [hchainVal]
-        norm_num [TargetSum.digitsPerHalf, numChains]
-        omega
-    have hwithin : bit - 3 * chainIdx.val < winternitzBits := by
-      dsimp only [chainIdx]
-      norm_num [winternitzBits]
-      omega
-    have hbitEq := congrArg (fun word : BitVec winternitzBits =>
-      word.getLsbD (bit - 3 * chainIdx.val)) hword
-    simpa only [TargetSum.digestEncoding, BitVec.getLsbD_extractLsb', hwithin, decide_true,
-      Bool.true_and, hoffset, show 3 * chainIdx.val + (bit - 3 * chainIdx.val) = bit by
-        dsimp only [chainIdx]
-        omega] using hbitEq
-  · by_cases hpad : bit = 63
-    · subst bit
-      rw [hleft63, hright63]
-    · by_cases hhigh : bit < 127
-      · let chainIdx : ChainIndex := ⟨21 + (bit - 64) / 3, by
-          have hbit64 : 64 ≤ bit := by omega
-          have : (bit - 64) / 3 < 21 := by omega
-          norm_num [numChains]
-          omega⟩
-        have hchain := congrFun hencoding chainIdx
-        change (left.extractLsb' (TargetSum.digitOffset chainIdx) winternitzBits).toFin =
-          (right.extractLsb' (TargetSum.digitOffset chainIdx) winternitzBits).toFin at hchain
-        have hword := BitVec.toFin_injective hchain
-        have hchainVal : chainIdx.val = 21 + (bit - 64) / 3 := rfl
-        have hoffset : TargetSum.digitOffset chainIdx = 64 + 3 * ((bit - 64) / 3) := by
-          rw [TargetSum.digitOffset, if_neg (by rw [hchainVal]; norm_num [TargetSum.digitsPerHalf, numChains])]
-          rw [hchainVal]
-          norm_num [winternitzBits]
-          omega
-        have hwithin : bit - (64 + 3 * ((bit - 64) / 3)) < winternitzBits := by
-          norm_num [winternitzBits]
-          omega
-        have hbitEq := congrArg (fun word : BitVec winternitzBits =>
-          word.getLsbD (bit - (64 + 3 * ((bit - 64) / 3)))) hword
-        simpa only [TargetSum.digestEncoding, BitVec.getLsbD_extractLsb', hwithin, decide_true,
-          Bool.true_and, hoffset,
-          show 64 + 3 * ((bit - 64) / 3) +
-              (bit - (64 + 3 * ((bit - 64) / 3))) = bit by omega] using hbitEq
-      · have : bit = 127 := by
-          have := hbit
-          norm_num [digestBits] at this
-          omega
-        subst bit
-        rw [hleft127, hright127]
+  let chainIdx : ChainIndex := ⟨bit / 4, by
+    have := hbit
+    norm_num [digestBits, numChains] at this ⊢
+    omega⟩
+  have hchain := congrFun hencoding chainIdx
+  change (left.extractLsb' (TargetSum.digitOffset chainIdx) winternitzBits).toFin =
+    (right.extractLsb' (TargetSum.digitOffset chainIdx) winternitzBits).toFin at hchain
+  have hword := BitVec.toFin_injective hchain
+  have hoffset : TargetSum.digitOffset chainIdx = 4 * (bit / 4) := rfl
+  have hwithin : bit - 4 * (bit / 4) < winternitzBits := by
+    norm_num [winternitzBits]
+    omega
+  have hbitEq := congrArg (fun word : BitVec winternitzBits =>
+    word.getLsbD (bit - 4 * (bit / 4))) hword
+  simpa only [TargetSum.digestEncoding, BitVec.getLsbD_extractLsb', hwithin, decide_true,
+    Bool.true_and, hoffset, show 4 * (bit / 4) + (bit - 4 * (bit / 4)) = bit by omega] using hbitEq
 
 theorem decode_some_injective {left right : Digest} {word : Encoding}
     (hleft : decode left = some word) (hright : decode right = some word) : left = right := by
   rw [decode_def, TargetSum.decodeDigest] at hleft hright
   split at hleft <;> split at hright
-  · rename_i hleftValid hrightValid
-    exact digest_eq_of_encoding_eq_of_padding (Option.some.inj hleft |>.trans
-      (Option.some.inj hright).symm) hleftValid.1 hleftValid.2.1
-      hrightValid.1 hrightValid.2.1
+  · exact digest_eq_of_encoding_eq (Option.some.inj hleft |>.trans (Option.some.inj hright).symm)
   all_goals simp at hleft hright
 
 /-- Two valid words cannot be ordered componentwise unless they are equal: walking chains forward from a revealed word never reaches another valid word. -/
@@ -121,13 +73,13 @@ theorem eq_of_le_of_valid {x y : Encoding} (hx : Valid x) (hy : Valid y)
 
 /-- A valid word, used where the proof needs a word before the reference encoding is known. -/
 irreducible_def defaultWord : Encoding :=
-  fun index => if index.val < 25 then ⟨7, by decide⟩ else if index.val = 25 then ⟨6, by decide⟩ else ⟨0, by decide⟩
+  fun index => if index.val < 20 then ⟨15, by decide⟩ else if index.val = 20 then ⟨12, by decide⟩ else ⟨0, by decide⟩
 
 theorem defaultWord_valid : Valid defaultWord := by
   rw [Valid_def]
-  change (∑ index : ChainIndex, (defaultWord index).val) = 181
+  change (∑ index : ChainIndex, (defaultWord index).val) = 312
   simp only [defaultWord_def]
-  change (∑ index : Fin 42, if index.val < 25 then (7 : Nat) else if index.val = 25 then 6 else 0) = 181
+  change (∑ index : Fin 32, if index.val < 20 then (15 : Nat) else if index.val = 20 then 12 else 0) = 312
   simp only [Fin.sum_univ_succ, Fin.sum_univ_zero]
   norm_num
 
@@ -270,11 +222,11 @@ theorem allUnitNeighbors_card_le (reference : Encoding) : (allUnitNeighbors refe
 
 /-! ### Values, for the closing arithmetic only -/
 
-theorem unitNeighborBound_eq : unitNeighborBound = 41 := by
+theorem unitNeighborBound_eq : unitNeighborBound = 31 := by
   rw [unitNeighborBound_def]
   rfl
 
-theorem neighborBound_eq : neighborBound = 1722 := by
+theorem neighborBound_eq : neighborBound = 992 := by
   rw [neighborBound_def]
   rfl
 

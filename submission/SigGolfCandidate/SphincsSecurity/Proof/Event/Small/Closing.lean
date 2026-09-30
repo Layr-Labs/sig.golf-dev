@@ -4,8 +4,8 @@ import SigGolfCandidate.SphincsSecurity.Proof.Event.Small.SmallBound
 
 At budget `q + 1` with `keygenHashCost ≤ q < budgetSplit`, the small-budget bound of the capped adversary
 is at most `q / 2^127`. Compared with the query-bounded closing, the full-certificate excess is paid at
-the crude budget `254 (q + 1)` (per request, at most 254 times the least signing cost `signCharge`), and the
-near-certificate term (15 slots, price `1241/15`) leaves about `0.018 x` of slack at the split; the extra query
+the crude budget `341 (q + 1)` (per request, at most 341 times the least signing cost `signCharge`), and the
+near-certificate term (15 slots, price `1241/15`) leaves about `0.017 x` of slack at the split; the extra query
 of the marker costs `2^-127`, which the slack absorbs since `q ≥ keygenHashCost`.
 -/
 
@@ -15,9 +15,9 @@ open ENNReal
 
 set_option exponentiation.threshold 1024
 
-private theorem visRangeClosing (x : ℝ) (hlow : 606208 / 2 ^ 128 ≤ x) (hhigh : x ≤ 3 / 16384) :
-    7 / 4 * x + 254 * 1 / 2 ^ 16 * x + 1 / 2 ^ 700 + x ^ 2 * 2 +
-      16384 / 16381 * x * (1241 * x + 15 * (254 * x / 2 ^ 25) + 15 / 2 ^ 700) +
+private theorem visRangeClosing (x : ℝ) (hlow : 987136 / 2 ^ 128 ≤ x) (hhigh : x ≤ 3 / 16384) :
+    7 / 4 * x + 341 * 1 / 2 ^ 16 * x + 1 / 2 ^ 700 + x ^ 2 * 2 +
+      16384 / 16381 * x * (1241 * x + 15 * (341 * x / 2 ^ 25) + 15 / 2 ^ 700) +
       x / 2 ^ 72 ≤ 2 * x - 2 / 2 ^ 128 := by
   have hn : 0 ≤ x := le_trans (by positivity) hlow
   have hsq : x * x ≤ x * (3 / 16384) := mul_le_mul_of_nonneg_left hhigh hn
@@ -25,10 +25,10 @@ private theorem visRangeClosing (x : ℝ) (hlow : 606208 / 2 ^ 128 ≤ x) (hhigh
     calc
       (1 : ℝ) / 2 ^ 700 = (1 / 2 ^ 128) / 2 ^ 572 := by norm_num
       _ ≤ x / 2 ^ 572 := div_le_div_of_nonneg_right (le_trans (by norm_num) hlow) (by positivity)
-  have hsmall : (2 : ℝ) / 2 ^ 128 ≤ x / 303104 := by
+  have hsmall : (2 : ℝ) / 2 ^ 128 ≤ x / 493568 := by
     calc
-      (2 : ℝ) / 2 ^ 128 = (606208 / 2 ^ 128) / 303104 := by norm_num
-      _ ≤ x / 303104 := div_le_div_of_nonneg_right hlow (by positivity)
+      (2 : ℝ) / 2 ^ 128 = (987136 / 2 ^ 128) / 493568 := by norm_num
+      _ ≤ x / 493568 := div_le_div_of_nonneg_right hlow (by positivity)
   norm_num at hsq htail hsmall ⊢
   nlinarith [hsq, htail, hn, hlow, hhigh, hsmall]
 
@@ -69,16 +69,16 @@ theorem visSmallBound_plus_le (q : Nat) (hq : keygenHashCost ≤ q) (hsmall : q 
     have h : ((16381 * 2 ^ 114 : Nat) : ENNReal) ≤ ((2 ^ 128 - b : Nat) : ENNReal) := by
       exact_mod_cast (show 16381 * 2 ^ 114 ≤ 2 ^ 128 - b by omega)
     exact_mod_cast h
-  have hcache : ((254 * b : Nat) : ENNReal) * certificateCacheExceptionRate ≤ ((254 * b : Nat) : ENNReal) * (2 ^ 153 : ENNReal)⁻¹ :=
+  have hcache : ((341 * b : Nat) : ENNReal) * certificateCacheExceptionRate ≤ ((341 * b : Nat) : ENNReal) * (2 ^ 153 : ENNReal)⁻¹ :=
     mul_le_mul' le_rfl certificateCacheExceptionRate_le
   refine le_trans (add_le_add (add_le_add (add_le_add le_rfl hpair)
     (mul_le_mul' hinv (mul_le_mul' le_rfl (mul_le_mul' le_rfl (add_le_add le_rfl (add_le_add hcache le_rfl)))))) le_rfl) ?_
   apply (ENNReal.toReal_le_toReal (by finiteness) (by finiteness)).mp
   simp (disch := finiteness) only [ENNReal.toReal_add, ENNReal.toReal_mul, ENNReal.toReal_div, ENNReal.toReal_inv,
     ENNReal.toReal_pow, ENNReal.toReal_natCast, ENNReal.toReal_ofNat, ENNReal.toReal_one, Nat.cast_pow, Nat.cast_ofNat, Nat.cast_mul]
-  have hlow : 606208 / 2 ^ 128 ≤ ((b : Nat) : ℝ) / 2 ^ 128 := by
+  have hlow : 987136 / 2 ^ 128 ≤ ((b : Nat) : ℝ) / 2 ^ 128 := by
     apply div_le_div_of_nonneg_right _ (by positivity)
-    exact_mod_cast (show 606208 ≤ b by omega)
+    exact_mod_cast (show 987136 ≤ b by omega)
   have hhigh : ((b : Nat) : ℝ) / 2 ^ 128 ≤ 3 / 16384 := by
     have hq' : ((b : Nat) : ℝ) ≤ 3 * 2 ^ 114 := by exact_mod_cast hsmall
     rw [div_le_div_iff₀ (by positivity) (by positivity)]

@@ -2,14 +2,14 @@ import SigGolfCandidate.Sign.Blocks
 import SigGolfCandidate.Sign.Inv
 
 /-!
-# `sign`, tree_build: the chain steps (`tb_step_loop`, instructions 533 .. 547)
+# `sign`, tree_build: the chain steps (`tb_step_loop`, instructions 522 .. 540)
 
 Value-last chain format: the chain block is `CB = 0xC0`: tweak, 32 zero bytes (`CB+16 .. CB+48`),
 the value at `CB+48 = 0xF0`; every answer is written at `a2 = CB+48` (its junk half lands at
 `0x100 .. 0x110`).
 
 `steps_sim` : from `tb_step_loop` with `MU = 0` (value `v0` at `CB+48`), the machine refines the
-seven chain steps `foldlM (step) (v0, v0) (range' 1 7)` of `buildChain`, including the capture of
+fifteen chain steps `foldlM (step) (v0, v0) (range' 1 15)` of `chainSteps`, including the capture of
 the value at position `x` into the stage slot `SIGL + 8 + 16 I` (only in leaf `e`).
 -/
 
@@ -20,24 +20,24 @@ set_option linter.unnecessarySeqFocus false
 namespace SigGolfCandidate.Sign
 open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref
 
-/-- The split chain position `(p >> 3) << 8 | (p & 7)` of `p = 8 i + j`. -/
-theorem splitP_word (i j : Nat) (hj : j < 8) (hi : i < 2 ^ 24) :
-    (BitVec.ofNat 64 (8 * i + j) >>> ((3#64).toNat % 64) <<< ((8#64).toNat % 64) |||
-      BitVec.ofNat 64 (8 * i + j) &&& 7#64) = BitVec.ofNat 64 (j + 256 * i) := by
-  have h1 : BitVec.ofNat 64 (8 * i + j) >>> ((3#64).toNat % 64) <<< ((8#64).toNat % 64) =
+/-- The split chain position `(p >> 4) << 8 | (p & 15)` of `p = 16 i + j`. -/
+theorem splitP_word (i j : Nat) (hj : j < 16) (hi : i < 2 ^ 24) :
+    (BitVec.ofNat 64 (16 * i + j) >>> ((4#64).toNat % 64) <<< ((8#64).toNat % 64) |||
+      BitVec.ofNat 64 (16 * i + j) &&& 15#64) = BitVec.ofNat 64 (j + 256 * i) := by
+  have h1 : BitVec.ofNat 64 (16 * i + j) >>> ((4#64).toNat % 64) <<< ((8#64).toNat % 64) =
       BitVec.ofNat 64 (256 * i) := by
-    rw [show (3#64 : Word).toNat % 64 = 3 from rfl, show (8#64 : Word).toNat % 64 = 8 from rfl]
+    rw [show (4#64 : Word).toNat % 64 = 4 from rfl, show (8#64 : Word).toNat % 64 = 8 from rfl]
     apply BitVec.eq_of_toNat_eq
     rw [BitVec.toNat_shiftLeft, BitVec.toNat_ushiftRight, BitVec.toNat_ofNat, BitVec.toNat_ofNat,
-      Nat.shiftRight_eq_div_pow, Nat.shiftLeft_eq, Nat.mod_eq_of_lt (a := 8 * i + j) (by omega),
-      show (8 * i + j) / 2 ^ 3 = i by omega, Nat.mod_eq_of_lt (a := 256 * i) (by omega),
+      Nat.shiftRight_eq_div_pow, Nat.shiftLeft_eq, Nat.mod_eq_of_lt (a := 16 * i + j) (by omega),
+      show (16 * i + j) / 2 ^ 4 = i by omega, Nat.mod_eq_of_lt (a := 256 * i) (by omega),
       Nat.mod_eq_of_lt (by omega)]
     ring
-  have h2 : BitVec.ofNat 64 (8 * i + j) &&& 7#64 = BitVec.ofNat 64 j := by
+  have h2 : BitVec.ofNat 64 (16 * i + j) &&& 15#64 = BitVec.ofNat 64 j := by
     apply BitVec.eq_of_toNat_eq
-    have h7 : (7#64 : Word).toNat = 2 ^ 3 - 1 := rfl
+    have h7 : (15#64 : Word).toNat = 2 ^ 4 - 1 := rfl
     rw [BitVec.toNat_and, h7, Nat.and_two_pow_sub_one_eq_mod, BitVec.toNat_ofNat, BitVec.toNat_ofNat,
-      Nat.mod_eq_of_lt (a := 8 * i + j) (by omega), Nat.mod_eq_of_lt (a := j) (by omega)]
+      Nat.mod_eq_of_lt (a := 16 * i + j) (by omega), Nat.mod_eq_of_lt (a := j) (by omega)]
     omega
   rw [h1, h2, ofNat_or_disjoint (256 * i) j 8 (by omega) (by omega) (by omega), Nat.add_comm]
 
@@ -57,9 +57,9 @@ structure StepCtx (p : StepPar) (ts : MachineState) : Prop where
   htau : p.tau < 2 ^ 30
   he : p.e < 64
   hep : p.ep < 64
-  hi : p.i < 42
-  hxi : p.xi < 8
-  hsigl : p.sigl = 0x900 + 856 * p.lay
+  hi : p.i < 32
+  hxi : p.xi < 16
+  hsigl : p.sigl = 0x900 + 696 * p.lay
   x5 : ts.getReg .x5 = 0
   x11 : ts.getReg .x11 = BitVec.ofNat 64 64
   x12 : ts.getReg .x12 = BitVec.ofNat 64 0xF0
@@ -81,22 +81,22 @@ def stepRegs : List Reg := [.x1, .x2, .x3, .x10, .x23, .x24, .x29]
 
 /-- Invariant after `j` steps. -/
 def StepInv (p : StepPar) (ts : MachineState) (j : Nat) (st : Val × Val) (t : MachineState) : Prop :=
-  j ≤ 7 ∧ st.1.length = 16 ∧ st.2.length = 16 ∧
+  j ≤ 15 ∧ st.1.length = 16 ∧ st.2.length = 16 ∧
   t.readWords (BitVec.ofNat 64 0xF0) 2 = wordsOf st.1 ∧
   t.readWords (BitVec.ofNat 64 0xD0) 4 = [0, 0, 0, 0] ∧
-  t.pc = (if j < 7 then pcOf 556 else pcOf 575) ∧ t.getReg .x23 = BitVec.ofNat 64 j ∧
-  t.getReg .x24 = BitVec.ofNat 64 (8 * p.i + j) ∧
+  t.pc = (if j < 15 then pcOf 522 else pcOf 541) ∧ t.getReg .x23 = BitVec.ofNat 64 j ∧
+  t.getReg .x24 = BitVec.ofNat 64 (16 * p.i + j) ∧
   (p.ep = p.e → p.xi ≤ j →
     t.readWords (BitVec.ofNat 64 (p.sigl + 8 + 16 * p.i)) 2 = wordsOf st.2) ∧
   RegsEq ts t stepRegs ∧ Frame ts t (stepW p) ∧
   lo32 (t.getMem (BitVec.ofNat 64 0xC0)) = lo32 (ts.getMem (BitVec.ofNat 64 0xC0))
 
 /-- The loop test (`tb_cap1_2`, instruction 546). -/
-theorem step_tail (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Nat) (hj : j < 7)
+theorem step_tail (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Nat) (hj : j < 15)
     (v cap : Val) (hv : v.length = 16) (hc : cap.length = 16) (t : MachineState)
-    (tpc : t.pc = pcOf 573) (tv : t.readWords (BitVec.ofNat 64 0xF0) 2 = wordsOf v)
+    (tpc : t.pc = pcOf 539) (tv : t.readWords (BitVec.ofNat 64 0xF0) 2 = wordsOf v)
     (tz : t.readWords (BitVec.ofNat 64 0xD0) 4 = [0, 0, 0, 0]) (t23 : t.getReg .x23 = BitVec.ofNat 64 (j + 1))
-    (t24 : t.getReg .x24 = BitVec.ofNat 64 (8 * p.i + (j + 1)))
+    (t24 : t.getReg .x24 = BitVec.ofNat 64 (16 * p.i + (j + 1)))
     (tcap : p.ep = p.e → p.xi ≤ j + 1 →
       t.readWords (BitVec.ofNat 64 (p.sigl + 8 + 16 * p.i)) 2 = wordsOf cap)
     (tregs : RegsEq ts t stepRegs) (tframe : Frame ts t (stepW p))
@@ -105,21 +105,21 @@ theorem step_tail (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
   have hsig := ctx.hsigl
   have hl := ctx.hlay
   have hi := ctx.hi
-  have hs := symRun_sound blk573 codeAt_573 t tpc (by simp only [blk573.res, rv_simp])
-  have hc2 : blk573.res.cycles = 2 := rfl
+  have hs := symRun_sound blk539 codeAt_539 t tpc (by simp only [blk539.res, rv_simp])
+  have hc2 : blk539.res.cycles = 2 := rfl
   rw [hc2] at hs
-  set t1 := blk573.res.toState t with ht1
+  set t1 := blk539.res.toState t with ht1
   have f1 : Frame t t1 (fun _ => False) := by
-    apply frame_toState; intro x hx hW; simp [blk573.res]
+    apply frame_toState; intro x hx hW; simp [blk539.res]
   have r1 : RegsEq t t1 [.x3] := by
     intro r hr; rw [ht1, Result.toState_getReg]
     cases r <;> first | exact absurd (by decide) hr | rfl
   refine Sim.pure_steps hs ⟨by omega, hv, hc, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [f1.readWords _ _ (by norm_num) (by simp), tv]
   · rw [f1.readWords _ _ (by norm_num) (by simp), tz]
-  · simp only [ht1, blk573.res, rv_simp]
+  · simp only [ht1, blk539.res, rv_simp]
     bvsimp [t23, ofNat_bne_ofNat]
-    by_cases h : j + 1 < 7
+    by_cases h : j + 1 < 15
     · rw [if_pos h, if_pos (by simp; omega)]
     · rw [if_neg h, if_neg (by simp; omega)]
   · rw [r1.get .x23, t23]
@@ -130,10 +130,10 @@ theorem step_tail (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
   · exact (tframe.trans f1).mono (by intro x hx; rcases hx with h | h; exact h; exact h.elim)
   · rw [f1.getMem (by norm_num) (by simp), tlo]
 
-/-- The capture copy (`CB+48 → SIGL + 8 + 16 I`, instructions 540 .. 545). -/
+/-- The capture copy (`CB+48 → SIGL + 8 + 16 I`, instructions 533 .. 538). -/
 theorem step_capture (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (t : MachineState)
-    (tpc : t.pc = pcOf 567) (tregs : RegsEq ts t stepRegs) :
-    ∃ t', Steps image t 6 6 t' ∧ t'.pc = pcOf 573 ∧ RegsEq t t' [.x1, .x2, .x3] ∧
+    (tpc : t.pc = pcOf 533) (tregs : RegsEq ts t stepRegs) :
+    ∃ t', Steps image t 6 6 t' ∧ t'.pc = pcOf 539 ∧ RegsEq t t' [.x1, .x2, .x3] ∧
       Frame t t' (fun x => x = p.sigl + 8 + 16 * p.i ∨ x = p.sigl + 16 + 16 * p.i) ∧
       t'.readWords (BitVec.ofNat 64 (p.sigl + 8 + 16 * p.i)) 2 =
         t.readWords (BitVec.ofNat 64 0xF0) 2 := by
@@ -142,22 +142,22 @@ theorem step_capture (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (t :
   have hi := ctx.hi
   have t21 : t.getReg .x21 = BitVec.ofNat 64 p.i := by rw [tregs.get .x21, ctx.x21]
   have t18 : t.getReg .x18 = BitVec.ofNat 64 p.sigl := by rw [tregs.get .x18, ctx.x18]
-  have hs := symRun_sound blk567 codeAt_567 t tpc (by
-    simp only [blk567.res, rv_simp]; bvsimp [t21, t18, accessValid_ofNat]; omega)
-  refine ⟨_, hs, by simp only [blk567.res, rv_simp], ?_, ?_, ?_⟩
+  have hs := symRun_sound blk533 codeAt_533 t tpc (by
+    simp only [blk533.res, rv_simp]; bvsimp [t21, t18, accessValid_ofNat]; omega)
+  refine ⟨_, hs, by simp only [blk533.res, rv_simp], ?_, ?_, ?_⟩
   · intro r hr; rw [Result.toState_getReg]
     cases r <;> first | exact absurd (by decide) hr | rfl
   · apply frame_toState; intro x hx hW
-    simp only [blk567.res, rv_simp, List.forall_mem_cons, List.not_mem_nil, IsEmpty.forall_iff,
+    simp only [blk533.res, rv_simp, List.forall_mem_cons, List.not_mem_nil, IsEmpty.forall_iff,
       implies_true, and_true, ne_eq]
     bvsimp [t21, t18, ofNat_eq_iff]
     omega
   · rw [readWords_ofNat_two, readWords_ofNat_two]
-    simp only [blk567.res, rv_simp]
+    simp only [blk533.res, rv_simp]
     bvsimp [t21, t18, ofNat_eq_iff]
     simp (disch := bvomega) only [if_pos, if_neg]
 
-theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Nat) (hj : j < 7)
+theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Nat) (hj : j < 15)
     (st : Val × Val) (t : MachineState) (hinv : StepInv p ts j st t) :
     Sim image t 29 (do
         let v ← hash16 (chainInput p.lay p.tau p.ep p.i (1 + j) st.1)
@@ -171,33 +171,33 @@ theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
   have hep := ctx.hep
   have hxi := ctx.hxi
   have he := ctx.he
-  have tpc' : t.pc = pcOf 556 := by rw [tpc, if_pos hj]
+  have tpc' : t.pc = pcOf 522 := by rw [tpc, if_pos hj]
   have tx5 : t.getReg .x5 = 0 := by rw [tregs.get .x5, ctx.x5]
   have tx11 : t.getReg .x11 = BitVec.ofNat 64 64 := by rw [tregs.get .x11, ctx.x11]
   have tx12 : t.getReg .x12 = BitVec.ofNat 64 0xF0 := by rw [tregs.get .x12, ctx.x12]
-  -- block 533: step input
-  have hs1 := symRun_sound blk556 codeAt_556 t tpc' (by simp only [blk556.res, rv_simp])
-  have hc1 : blk556.res.cycles = 7 := rfl
+  -- block 522: step input
+  have hs1 := symRun_sound blk522 codeAt_522 t tpc' (by simp only [blk522.res, rv_simp])
+  have hc1 : blk522.res.cycles = 7 := rfl
   rw [hc1] at hs1
-  set t1 := blk556.res.toState t with ht1
+  set t1 := blk522.res.toState t with ht1
   have f1 : Frame t t1 (fun x => x = 0xC0) := by
     apply frame_toState; intro x hx hW
-    simp only [blk556.res, rv_simp, List.forall_mem_cons, List.not_mem_nil, IsEmpty.forall_iff,
+    simp only [blk522.res, rv_simp, List.forall_mem_cons, List.not_mem_nil, IsEmpty.forall_iff,
       implies_true, and_true, ne_eq, ofNat_eq_iff]
     omega
   have r1 : RegsEq t t1 [.x3, .x10, .x23, .x29] := by
     intro r hr; rw [ht1, Result.toState_getReg]
     cases r <;> first | exact absurd (by decide) hr | rfl
-  have e1 := symRun_ecall blk556 codeAt_556 t (by simp only [blk556.res, rv_simp]) rfl
-  have x10 : t1.getReg .x10 = BitVec.ofNat 64 0xC0 := by simp only [ht1, blk556.res, rv_simp]
+  have e1 := symRun_ecall blk522 codeAt_522 t (by simp only [blk522.res, rv_simp]) rfl
+  have x10 : t1.getReg .x10 = BitVec.ofNat 64 0xC0 := by simp only [ht1, blk522.res, rv_simp]
   have x11 : t1.getReg .x11 = BitVec.ofNat 64 64 := by rw [r1.get .x11, tx11]
   have x12 : t1.getReg .x12 = BitVec.ofNat 64 0xF0 := by rw [r1.get .x12, tx12]
   have x5 : t1.getReg .x5 = 0 := by rw [r1.get .x5, tx5]
   have x23 : t1.getReg .x23 = BitVec.ofNat 64 (j + 1) := by
-    simp only [ht1, blk556.res, rv_simp]; bvsimp [t23]
-  have pc1 : t1.pc = pcOf 563 := by simp only [ht1, blk556.res, rv_simp]
+    simp only [ht1, blk522.res, rv_simp]; bvsimp [t23]
+  have pc1 : t1.pc = pcOf 529 := by simp only [ht1, blk522.res, rv_simp]
   have mC0 : t1.getMem (BitVec.ofNat 64 0xC0) = twWord0 1 p.lay p.tau (j + 256 * p.i) := by
-    simp only [ht1, blk556.res, rv_simp, t24, splitP_word p.i j (by omega) (by omega)]
+    simp only [ht1, blk522.res, rv_simp, t24, splitP_word p.i j (by omega) (by omega)]
     bvsimp []
     refine (word_of_halves _ (0x101 + 65536 * p.lay) (j + 256 * p.i) (by rw [lo32_replace1, tlo, ctx.cb0])
       (by rw [hi32_replace1])).trans ?_
@@ -225,14 +225,14 @@ theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
   set t2 := writeHash t1 a with ht2
   have f2 : Frame t1 t2 (fun x => 0xF0 ≤ x ∧ x < 0xF0 + 32) := frame_writeHash t1 a _ x12 (by norm_num)
   have v2 : t2.readWords (BitVec.ofNat 64 0xF0) 2 = wordsOf v := writeHash_readWords_val t1 a _ x12 (by norm_num)
-  have pc2 : t2.pc = pcOf 564 := by rw [ht2, writeHash_pc, pc1]; apply BitVec.eq_of_toNat_eq; simp
-  -- block 537: P++, test EP = e
-  have hs3 := symRun_sound blk564 codeAt_564 t2 pc2 (by simp only [blk564.res, rv_simp])
-  have hc3 : blk564.res.cycles = 2 := rfl
+  have pc2 : t2.pc = pcOf 530 := by rw [ht2, writeHash_pc, pc1]; apply BitVec.eq_of_toNat_eq; simp
+  -- block 530: P++, test EP = e
+  have hs3 := symRun_sound blk530 codeAt_530 t2 pc2 (by simp only [blk530.res, rv_simp])
+  have hc3 : blk530.res.cycles = 2 := rfl
   rw [hc3] at hs3
-  set t3 := blk564.res.toState t2 with ht3
+  set t3 := blk530.res.toState t2 with ht3
   have f3 : Frame t2 t3 (fun _ => False) := by
-    apply frame_toState; intro x hx hW; simp [blk564.res]
+    apply frame_toState; intro x hx hW; simp [blk530.res]
   have r3 : RegsEq t2 t3 [.x24] := by
     intro r hr; rw [ht3, Result.toState_getReg]
     cases r <;> first | exact absurd (by decide) hr | rfl
@@ -244,15 +244,15 @@ theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
     rw [rt3.get .x13, tregs.get .x13, ctx.x13]
   have x323 : t3.getReg .x23 = BitVec.ofNat 64 (j + 1) := by
     rw [r3.get .x23, ht2, writeHash_getReg, x23]
-  have t224 : t2.getReg .x24 = BitVec.ofNat 64 (8 * p.i + j) := by
+  have t224 : t2.getReg .x24 = BitVec.ofNat 64 (16 * p.i + j) := by
     rw [ht2, writeHash_getReg, r1.get .x24, t24]
   have t220 : t2.getReg .x20 = BitVec.ofNat 64 p.ep := by
     rw [ht2, writeHash_getReg, r1.get .x20, tregs.get .x20, ctx.x20]
   have t213 : t2.getReg .x13 = BitVec.ofNat 64 p.e := by
     rw [ht2, writeHash_getReg, r1.get .x13, tregs.get .x13, ctx.x13]
-  have x324 : t3.getReg .x24 = BitVec.ofNat 64 (8 * p.i + (j + 1)) := by
-    simp only [ht3, blk564.res, rv_simp, t224, ofNat_add_ofNat]
-    rw [show 8 * p.i + j + 1 = 8 * p.i + (j + 1) by ring]
+  have x324 : t3.getReg .x24 = BitVec.ofNat 64 (16 * p.i + (j + 1)) := by
+    simp only [ht3, blk530.res, rv_simp, t224, ofNat_add_ofNat]
+    rw [show 16 * p.i + j + 1 = 16 * p.i + (j + 1) by ring]
   have v3 : t3.readWords (BitVec.ofNat 64 0xF0) 2 = wordsOf v := by
     rw [f3.readWords _ _ (by norm_num) (by simp), v2]
   have ft3 : Frame t t3 (fun x => x = 0xC0 ∨ (0xF0 ≤ x ∧ x < 0x110)) :=
@@ -266,8 +266,8 @@ theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
     rw [f3.getMem (by norm_num) (by simp), f2.getMem (by norm_num) (by omega), mC0, ctx.cb0]
     simp only [twWord0, lo32_ofNat]
     apply BitVec.eq_of_toNat_eq; simp; omega
-  have pc3 : t3.pc = if p.ep = p.e then pcOf 566 else pcOf 573 := by
-    simp only [ht3, blk564.res, rv_simp, t220, t213, ofNat_bne_ofNat]
+  have pc3 : t3.pc = if p.ep = p.e then pcOf 532 else pcOf 539 := by
+    simp only [ht3, blk530.res, rv_simp, t220, t213, ofNat_bne_ofNat]
     by_cases h : p.ep = p.e
     · rw [if_pos h, if_neg (by simp; omega)]
     · rw [if_neg h, if_pos (by simp; omega)]
@@ -277,20 +277,20 @@ theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
     rw [ft3.readWords _ _ (by omega) (by intro i hi; omega), tcap h1 h2]
   by_cases hep' : p.ep = p.e
   · -- capture leaf: test MU = X
-    have hs4 := symRun_sound blk566 codeAt_566 t3 (by rw [pc3, if_pos hep'])
-      (by simp only [blk566.res, rv_simp])
-    have hc4 : blk566.res.cycles = 1 := rfl
+    have hs4 := symRun_sound blk532 codeAt_532 t3 (by rw [pc3, if_pos hep'])
+      (by simp only [blk532.res, rv_simp])
+    have hc4 : blk532.res.cycles = 1 := rfl
     rw [hc4] at hs4
-    set t4 := blk566.res.toState t3 with ht4
+    set t4 := blk532.res.toState t3 with ht4
     have f4 : Frame t3 t4 (fun _ => False) := by
-      apply frame_toState; intro x hx hW; simp [blk566.res]
+      apply frame_toState; intro x hx hW; simp [blk532.res]
     have r4 : RegsEq t3 t4 [] := by
       intro r hr; rw [ht4, Result.toState_getReg]
       cases r <;> first | exact absurd (by decide) hr | rfl
     have x325 : t3.getReg .x25 = BitVec.ofNat 64 p.xi := by
       rw [rt3.get .x25, tregs.get .x25, ctx.x25]
-    have pc4 : t4.pc = if p.xi = j + 1 then pcOf 567 else pcOf 573 := by
-      simp only [ht4, blk566.res, rv_simp]; bvsimp [x323, x325, ofNat_bne_ofNat]
+    have pc4 : t4.pc = if p.xi = j + 1 then pcOf 533 else pcOf 539 := by
+      simp only [ht4, blk532.res, rv_simp]; bvsimp [x323, x325, ofNat_bne_ofNat]
       by_cases h : p.xi = j + 1
       · rw [if_pos h, if_neg (by simp; omega)]
       · rw [if_neg h, if_pos (by simp; omega)]
@@ -326,13 +326,13 @@ theorem step_body (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (j : Na
       (fun h => absurd h hep') rts3 fts3 lo3
     exact (Sim.steps hs3 this).mono (by norm_num) (fun _ _ h => h)
 
-/-- **Chain steps** `mu = 1 .. 7` (with capture). -/
+/-- **Chain steps** `mu = 1 .. 15` (with capture). -/
 theorem steps_sim (p : StepPar) (ts : MachineState) (ctx : StepCtx p ts) (v0 : Val)
     (h0 : StepInv p ts 0 (v0, v0) ts) :
-    Sim image ts (7 * 29) ((List.range' 1 7).foldlM (fun (st : Val × Val) mu => do
+    Sim image ts (15 * 29) ((List.range' 1 15).foldlM (fun (st : Val × Val) mu => do
         let v ← hash16 (chainInput p.lay p.tau p.ep p.i mu st.1)
-        pure (v, if mu = p.xi then v else st.2)) (v0, v0)) (StepInv p ts 7) :=
-  Sim.foldlM_range' 1 7 _ (v0, v0) (StepInv p ts) 29
+        pure (v, if mu = p.xi then v else st.2)) (v0, v0)) (StepInv p ts 15) :=
+  Sim.foldlM_range' 1 15 _ (v0, v0) (StepInv p ts) 29
     (fun j hj st t h => step_body p ts ctx j hj st t h) h0
 
 end SigGolfCandidate.Sign

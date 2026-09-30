@@ -1,5 +1,5 @@
 import SigGolfCandidate.Verify.PorsRuns
-import SigGolfCandidate.Verify.LayArith
+import SigGolfCandidate.Verify.Common
 
 /-! # Digest-word arithmetic for the PORS phase: idx, the leaf indices, tweak words, counters -/
 

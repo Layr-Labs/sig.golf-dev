@@ -44,14 +44,14 @@ def buildLevels (node : NodeFmt) (cap h : Nat) (leaves : List Val) :
   let st ← (List.range' 1 h).foldlM (levelStep node cap) (leaves, [])
   pure (st.1.getD 0 [], st.2)
 
-/-- Chain `i` of leaf `e` of tree `(lay, tau)` from its secret `v`: steps `mu = 1 .. 7`.
+/-- Chain `i` of leaf `e` of tree `(lay, tau)` from its secret `v`: steps `mu = 1 .. 15`.
 Returns `(chain end, value at position x)` (position 0 = the secret). -/
 def chainSteps (lay tau e i x : Nat) (v : Val) : OracleComp HashSpec (Val × Val) :=
-  (List.range' 1 7).foldlM (fun (st : Val × Val) mu => do
+  (List.range' 1 15).foldlM (fun (st : Val × Val) mu => do
     let v ← hash16 (chainInput lay tau e i mu st.1)
     pure (v, if mu = x then v else st.2)) (v, v)
 
-/-- OTS leaf `e`: for chain pairs `k = 0 .. 20`, the paired secret query, then chain `2k`'s steps,
+/-- OTS leaf `e`: for chain pairs `k = 0 .. 15`, the paired secret query, then chain `2k`'s steps,
 then chain `2k+1`'s (digits `x`); then the leaf hash.
 Returns `(leaf, [value of chain i at position x_i])`. -/
 def buildLeaf (S : List Byte) (lay tau e : Nat) (x : List Nat) :
@@ -165,7 +165,7 @@ def searchCounter (lay tau e : Nat) (M : Val) (c : Nat) :
     | some x => pure (some (c, x))
     | none => searchCounter lay tau e M (c + 1) fuel
 
-/-- A signed layer: counter, 42 chain values, authentication path. -/
+/-- A signed layer: counter, 32 chain values, authentication path. -/
 abbrev LayerSig := Nat × List Val × List Val
 
 /-- Chain `i` of leaf `e` up to position `x` only, from its secret `v`: steps `1 .. x`. -/
@@ -212,13 +212,13 @@ def signLayers (S cache : List Byte) (idx : Nat) :
       | none => pure none
       | some rest => pure (some (rest ++ [(c, vals, path)]))
 
-/-- Signature bytes: `rho | FTS items (133 × 16) | (LE32 c, vals, path)_{lay=0..4}`. -/
+/-- Signature bytes: `rho | FTS items (133 × 16) | (LE32 c, vals, path)_{lay=0..5}`. -/
 def serialize (rho : Val) (fts : List Val) (lays : List LayerSig) : List Byte :=
   rho ++ fts.flatten ++
     (lays.map fun l => le32 l.1 ++ l.2.1.flatten ++ l.2.2.flatten).flatten
 
 /-- `ref.sign`: the MAC check of the cache (one query; `none` on a mismatch), the digest search,
-the PORS tree of `idx` (its root is the message of the bottom layer), the layers `4 .. 0`. -/
+the PORS tree of `idx` (its root is the message of the bottom layer), the layers `5 .. 0`. -/
 def signList (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) := do
   let tag ← H (macInput S (cacheRegion cache))
   if toList (n := 32) tag = cacheTag cache then
@@ -234,13 +234,13 @@ def signList (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) 
   else pure none
 
 def signRef (sk : Bytes 32) (cache : Cache) (m : Bytes 32) :
-    OracleComp HashSpec (Option (Bytes 6068)) := do
+    OracleComp HashSpec (Option (Bytes 5784)) := do
   let r ← signList (toList sk) (toList cache) (toList m)
-  pure (r.map (ofList 6068))
+  pure (r.map (ofList 5784))
 
 /-! ## Signature and witness layout -/
 
-/-- Bytes of layer `lay` in the signature: `LE32 c`, 42 chain values, `h_lay` siblings. -/
+/-- Bytes of layer `lay` in the signature: `LE32 c`, 32 chain values, `h_lay` siblings. -/
 def sigLayerBytes (lay : Nat) : Nat := 4 + 16 * nChains + 16 * height lay
 /-- Bytes before the layers (`ref.LAYER0`): `rho` and the 133 FTS items (2144). -/
 def headBytes : Nat := 16 + 16 * (porsK + porsM)
@@ -282,7 +282,7 @@ def segStream (sig : List Byte) (segs : List Nat) : List Byte := (segs.foldl (st
 /-- The witness bytes built by `ref.expand` (after its checks), from the signature, the leaf
 indices `v` (digest-slot order), their sorted list `vs`, and the segment bytes `segs`:
 `rho | pi (byte s = 8 * slot of vs[s] in v) | 0 | secrets | stream, zero padded to STREAM_BYTES |
-layer bodies 0..4 | counters 0..4`. (On every input `ref.expand` accepts the stream has at most
+layer bodies 0..5 | counters 0..5`. (On every input `ref.expand` accepts the stream has at most
 `STREAM_BYTES` bytes; the `take` only fixes the length otherwise, where `ref.expand` would fail
 its assertion.) -/
 def witnessList (sig : List Byte) (v vs segs : List Nat) : List Byte :=
@@ -313,10 +313,10 @@ def expandList (m sig : List Byte) : OracleComp HashSpec (Option (List Byte)) :=
   pure (expandOf sig N)
 
 /-- `ref.expand(pk, m, sig)` (the public key is unused). -/
-def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6068) :
-    OracleComp HashSpec (Option (Bytes 6348)) := do
+def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 5784) :
+    OracleComp HashSpec (Option (Bytes 6064)) := do
   let r ← expandList (toList m) (toList sig)
-  pure (r.map (ofList 6348))
+  pure (r.map (ofList 6064))
 
 /-! ## verify (on the witness, in the bytecode's order) -/
 
@@ -327,7 +327,7 @@ def witSecret (w : List Byte) (s : Nat) : Val := slice w (wSec + 16 * s) 16
 def wbyte (w : List Byte) (off : Nat) : Nat := (w.getD off 0).toNat
 def wbytes (w : List Byte) (off n : Nat) : Val := (List.range n).map fun i => w.getD (off + i) 0
 def witChain (w : List Byte) (lay i : Nat) : Val := slice w (witLayerOff lay + 16 * i) 16
-def witSib (w : List Byte) (lay l : Nat) : Val := slice w (witLayerOff lay + 672 + 16 * l) 16
+def witSib (w : List Byte) (lay l : Nat) : Val := slice w (witLayerOff lay + 16 * nChains + 16 * l) 16
 def witPath (w : List Byte) (lay : Nat) : List Val := (List.range (height lay)).map (witSib w lay)
 def witCounter (w : List Byte) (lay : Nat) : Nat := leNat (slice w (witCounters + 4 * lay) 4)
 
@@ -446,11 +446,11 @@ def porsRoot (idx : Nat) (v : List Nat) (w : List Byte) : OracleComp HashSpec (O
   | some st =>
     if st.folds > porsM ∨ st.E ≠ 1 ∨ st.stack ≠ [] then pure none else pure (some st.node)
 
-/-- Chain `i` of leaf `e` from the value `v` at position `x`: steps `mu = x+1 .. 7`. -/
+/-- Chain `i` of leaf `e` from the value `v` at position `x`: steps `mu = x+1 .. 15`. -/
 def chainFrom (lay tau e i x : Nat) (v : Val) : OracleComp HashSpec Val :=
-  (List.range' (x + 1) (7 - x)).foldlM (fun v mu => hash16 (chainInput lay tau e i mu v)) v
+  (List.range' (x + 1) (15 - x)).foldlM (fun v mu => hash16 (chainInput lay tau e i mu v)) v
 
-/-- OTS leaf from the chain values of layer `lay` and the digits `x`: chains `i = 0 .. 41`,
+/-- OTS leaf from the chain values of layer `lay` and the digits `x`: chains `i = 0 .. 31`,
 then the leaf hash. -/
 def verifyLeaf (w : List Byte) (lay tau e : Nat) (x : List Nat) : OracleComp HashSpec Val := do
   let ends ← (List.range nChains).foldlM (fun ends i => do
@@ -474,7 +474,7 @@ def verifyLayers (w : List Byte) (idx : Nat) : Nat → Val → OracleComp HashSp
 
 /-- Verification of a witness (byte list; `ref.verify_witness` without its length check,
 which `verifyRef` makes vacuous): the counter range check (no queries), the digest, the PORS
-root (the message of the bottom layer), the layers `4 .. 0`, the comparison with `pk`. -/
+root (the message of the bottom layer), the layers `5 .. 0`, the comparison with `pk`. -/
 def verifyList (m pk w : List Byte) : OracleComp HashSpec Bool := do
   if !countersOk w then return false
   let N ← digest (witRho w) m
@@ -485,11 +485,11 @@ def verifyList (m pk w : List Byte) : OracleComp HashSpec Bool := do
     | none => pure false
     | some root => pure (root == pk)
 
-def verifyRef (m : Bytes 32) (pk : Bytes 16) (w : Bytes 6348) : OracleComp HashSpec Bool :=
+def verifyRef (m : Bytes 32) (pk : Bytes 16) (w : Bytes 6064) : OracleComp HashSpec Bool :=
   verifyList (toList m) (toList pk) (toList w)
 
 /-- `ref.verify`: expand, then verify the witness (`false` if expand fails). -/
-def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6068) : OracleComp HashSpec Bool := do
+def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 5784) : OracleComp HashSpec Bool := do
   match ← expandRef m pk sig with
   | none => pure false
   | some w => verifyRef m pk w

@@ -225,8 +225,8 @@ theorem length_flatten_map_dv (l : List Digest) : (l.map dv).flatten.length = 16
 /-- The layer bytes of the reference serialization. -/
 theorem serialize_layers (parts : Layer → SphincsSecurity.Concrete.LayerOutput) (σ : Signature)
     (hσ : σ.layers = fun lay => SphincsSecurity.Concrete.LayerOutput.toSignature lay (parts lay)) :
-    ((List.ofFn fun l : Fin (4 + 1) =>
-        layerRef (Fin.castLE (le_refl 5) l) (parts (Fin.castLE (le_refl 5) l))).map
+    ((List.ofFn fun l : Fin (5 + 1) =>
+        layerRef (Fin.castLE (le_refl 6) l) (parts (Fin.castLE (le_refl 6) l))).map
       fun l => Ref.le32 l.1 ++ l.2.1.flatten ++ l.2.2.flatten).flatten =
       (List.ofFn (layerBytes σ)).flatten := by
   simp only [List.map_ofFn]
@@ -250,8 +250,8 @@ theorem serialize_eq (rho : Digest) (leaves : IndexGroup → FtsLeaf)
       (Ref.porsOpening (Ref.sortLeaves (List.ofFn fun r => (leaves r).val))
         ((List.range (SphincsSecurity.ftsTreeHeight + 1)).map (levelList T SphincsSecurity.ftsTreeHeight))
         (List.ofFn fun j => dv (sec j)))
-      (List.ofFn fun l : Fin (4 + 1) =>
-        layerRef (Fin.castLE (le_refl 5) l) (parts (Fin.castLE (le_refl 5) l))) =
+      (List.ofFn fun l : Fin (5 + 1) =>
+        layerRef (Fin.castLE (le_refl 6) l) (parts (Fin.castLE (le_refl 6) l))) =
     compressList ⟨rho, SphincsSecurity.Concrete.honestFts leaves sec T,
       fun lay => SphincsSecurity.Concrete.LayerOutput.toSignature lay (parts lay)⟩ := by
   obtain ⟨hlen, hseg, hoct⟩ := schedule_admissible leaves hadm
@@ -406,8 +406,8 @@ theorem signCont_eq (seed : MasterSeed) (b : SigGolfCandidate.Cache) (randomness
     unfold levelList
     rw [getD_ofFn, dif_pos (by simp)]
   simp only
-  rw [hM, show Ref.nLayers - 1 = 4 from rfl]
-  rw [signLayers_eq seed b index 4 (le_refl 5) (T SphincsSecurity.ftsTreeHeight 0), bind_map_left]
+  rw [hM, show Ref.nLayers - 1 = 5 from rfl]
+  rw [signLayers_eq seed b index 5 (le_refl 6) (T SphincsSecurity.ftsTreeHeight 0), bind_map_left]
   refine bind_congr (m := OracleComp SigGolfCandidate.Legacy.HashSpec) fun r => ?_
   rcases r with _ | parts
   · simp

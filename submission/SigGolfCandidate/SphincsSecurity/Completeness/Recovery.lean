@@ -305,7 +305,7 @@ theorem verify_of_signatureValue (key : SecretKey) (message : Message) (randomne
     have hbottom : enterMessage f key index numLayers
         = evalWithAnswerFn f (ftsKey key.parameter index (key.ftsSecret index)
           : OracleComp HashSpec Digest) := by
-      rw [show numLayers = 4 + 1 from rfl, enterMessage, dif_pos (by decide),
+      rw [show numLayers = 5 + 1 from rfl, enterMessage, dif_pos (by decide),
         ← layerMessage_bottomLayer_eq]
       rfl
     have htop : layerRoot f key index topLayer = key.root := by

@@ -12,8 +12,8 @@ For a uniform answer `u : BitVec 256`:
 * the randomizer lands in a set `R` of values with probability at most `|R| / 2^128`
   (`probEvent_answerBytes_mem_le`);
 * the encoding decodes with probability exactly `codeCount / 2^128`, where
-  `codeCount = 166377570312823648881394061712938016` is the number of pairs of 21-digit octal
-  words with digit sum `targetSum` (181) (`probEvent_decode_none`). The count is a generating-function identity
+  `codeCount = 112209344069469584472697770879116936` (`≈ 2^128 / 3032.57`) is the number of pairs
+  of 16-digit hexadecimal words with digit sum `targetSum` (312) (`probEvent_decode_none`). The count is a generating-function identity
   evaluated by the kernel (`codeCount_eq`), as in the leanVM completeness proof.
 -/
 
@@ -140,8 +140,8 @@ theorem probEvent_answerBytes_mem_le (R : Finset Val) :
 
 /-! ## Decoding -/
 
-/-- Octal digit sum of the low `n` digits. -/
-def ds (n a : Nat) : Nat := ∑ r ∈ range n, a / 8 ^ r % 8
+/-- Hexadecimal digit sum of the low `n` digits. -/
+def ds (n a : Nat) : Nat := ∑ r ∈ range n, a / 16 ^ r % 16
 
 theorem list_sum_map_range (f : Nat → Nat) (n : Nat) :
     ((List.range n).map f).sum = ∑ r ∈ range n, f r := by
@@ -149,29 +149,29 @@ theorem list_sum_map_range (f : Nat → Nat) (n : Nat) :
   | zero => simp
   | succ n ih => rw [List.range_succ, List.map_append, List.sum_append, ih, Finset.sum_range_succ]; simp
 
-theorem sum_digitsOfWord (d : Nat) : (digitsOfWord d).sum = ds 21 d := by
+theorem sum_digitsOfWord (d : Nat) : (digitsOfWord d).sum = ds 16 d := by
   unfold digitsOfWord ds
-  exact list_sum_map_range _ 21
+  exact list_sum_map_range _ 16
 
-theorem ds_succ (n d b : Nat) (hd : d < 8) : ds (n + 1) (d + 8 * b) = d + ds n b := by
+theorem ds_succ (n d b : Nat) (hd : d < 16) : ds (n + 1) (d + 16 * b) = d + ds n b := by
   unfold ds
   rw [Finset.sum_range_succ']
   simp only [pow_zero, Nat.div_one]
-  rw [show (d + 8 * b) % 8 = d by omega, Nat.add_comm]
+  rw [show (d + 16 * b) % 16 = d by omega, Nat.add_comm]
   congr 1
   refine Finset.sum_congr rfl fun r _ => ?_
-  rw [pow_succ', ← Nat.div_div_eq_div_mul, show (d + 8 * b) / 8 = b by omega]
+  rw [pow_succ', ← Nat.div_div_eq_div_mul, show (d + 16 * b) / 16 = b by omega]
 
-theorem ds_le (n a : Nat) : ds n a ≤ 7 * n := by
+theorem ds_le (n a : Nat) : ds n a ≤ 15 * n := by
   unfold ds
-  calc ∑ r ∈ range n, a / 8 ^ r % 8 ≤ ∑ _r ∈ range n, 7 :=
+  calc ∑ r ∈ range n, a / 16 ^ r % 16 ≤ ∑ _r ∈ range n, 15 :=
         Finset.sum_le_sum fun r _ => Nat.le_of_lt_succ (Nat.mod_lt _ (by norm_num))
-    _ = 7 * n := by simp [Nat.mul_comm]
+    _ = 15 * n := by simp [Nat.mul_comm]
 
-/-- The digit generating polynomial `1 + X + ... + X^7`. -/
-def gfDigit (X : Nat) : Nat := ∑ d ∈ range 8, X ^ d
+/-- The digit generating polynomial `1 + X + ... + X^15`. -/
+def gfDigit (X : Nat) : Nat := ∑ d ∈ range 16, X ^ d
 
-theorem gf_ds (X n : Nat) : ∑ a ∈ range (8 ^ n), X ^ ds n a = gfDigit X ^ n := by
+theorem gf_ds (X n : Nat) : ∑ a ∈ range (16 ^ n), X ^ ds n a = gfDigit X ^ n := by
   induction n with
   | zero => simp [ds]
   | succ n ih =>
@@ -181,14 +181,14 @@ theorem gf_ds (X n : Nat) : ∑ a ∈ range (8 ^ n), X ^ ds n a = gfDigit X ^ n 
     refine Finset.sum_congr rfl fun d hd => ?_
     rw [ds_succ n d b (mem_range.mp hd), pow_add, Nat.mul_comm]
 
-/-- Pairs of `n`-digit octal words with digit sum `s`. -/
+/-- Pairs of `n`-digit hexadecimal words with digit sum `s`. -/
 def npair (n s : Nat) : Nat :=
-  ∑ a1 ∈ range (8 ^ n), ∑ a0 ∈ range (8 ^ n), if ds n a0 + ds n a1 = s then 1 else 0
+  ∑ a1 ∈ range (16 ^ n), ∑ a0 ∈ range (16 ^ n), if ds n a0 + ds n a1 = s then 1 else 0
 
 theorem gf_pairs (X n : Nat) :
-    ∑ s ∈ range (14 * n + 1), npair n s * X ^ s = gfDigit X ^ (2 * n) := by
+    ∑ s ∈ range (30 * n + 1), npair n s * X ^ s = gfDigit X ^ (2 * n) := by
   have hr : gfDigit X ^ (2 * n) =
-      ∑ a1 ∈ range (8 ^ n), ∑ a0 ∈ range (8 ^ n), X ^ (ds n a0 + ds n a1) := by
+      ∑ a1 ∈ range (16 ^ n), ∑ a0 ∈ range (16 ^ n), X ^ (ds n a0 + ds n a1) := by
     rw [Nat.two_mul, pow_add, ← gf_ds, Finset.sum_mul_sum, Finset.sum_comm]
     refine Finset.sum_congr rfl fun a1 _ => Finset.sum_congr rfl fun a0 _ => ?_
     rw [pow_add]
@@ -199,16 +199,16 @@ theorem gf_pairs (X n : Nat) :
   refine Finset.sum_congr rfl fun a1 _ => ?_
   rw [Finset.sum_comm]
   refine Finset.sum_congr rfl fun a0 _ => ?_
-  rw [Finset.sum_ite_eq (range (14 * n + 1)) (ds n a0 + ds n a1) (fun s => X ^ s), if_pos]
+  rw [Finset.sum_ite_eq (range (30 * n + 1)) (ds n a0 + ds n a1) (fun s => X ^ s), if_pos]
   have := ds_le n a0; have := ds_le n a1
   rw [mem_range]; omega
 
-theorem npair_le (n s : Nat) : npair n s ≤ 8 ^ n * 8 ^ n := by
+theorem npair_le (n s : Nat) : npair n s ≤ 16 ^ n * 16 ^ n := by
   unfold npair
-  calc (∑ a1 ∈ range (8 ^ n), ∑ a0 ∈ range (8 ^ n), if ds n a0 + ds n a1 = s then 1 else 0)
-      ≤ ∑ _a1 ∈ range (8 ^ n), ∑ _a0 ∈ range (8 ^ n), 1 :=
+  calc (∑ a1 ∈ range (16 ^ n), ∑ a0 ∈ range (16 ^ n), if ds n a0 + ds n a1 = s then 1 else 0)
+      ≤ ∑ _a1 ∈ range (16 ^ n), ∑ _a0 ∈ range (16 ^ n), 1 :=
         Finset.sum_le_sum fun _ _ => Finset.sum_le_sum fun _ _ => by split <;> simp
-    _ = 8 ^ n * 8 ^ n := by simp
+    _ = 16 ^ n * 16 ^ n := by simp
 
 theorem digit_of_sum (B : Nat) (hB : 0 < B) (c : Nat → Nat) (hc : ∀ s, c s < B) :
     ∀ (n k : Nat), k < n → (∑ s ∈ range n, c s * B ^ s) / B ^ k % B = c k := by
@@ -236,26 +236,27 @@ theorem digit_of_sum (B : Nat) (hB : 0 < B) (c : Nat → Nat) (hc : ∀ s, c s <
           rw [Nat.add_mul_div_left _ _ hB, Nat.div_eq_of_lt (hc 0), Nat.zero_add]
           exact ih (fun s => c (s + 1)) (fun s => hc (s + 1)) k (Nat.lt_of_succ_lt_succ hk)
 
-theorem npair_coeff (n s X : Nat) (hX : 8 ^ n * 8 ^ n < X) (hs : s < 14 * n + 1) :
+theorem npair_coeff (n s X : Nat) (hX : 16 ^ n * 16 ^ n < X) (hs : s < 30 * n + 1) :
     npair n s = gfDigit X ^ (2 * n) / X ^ s % X := by
   rw [← gf_pairs]
   exact (digit_of_sum X (by omega) (npair n) (fun s => (npair_le n s).trans_lt hX) _ s hs).symm
 
-/-- The number of accepted encodings (pairs of 21-digit words with digit sum `targetSum = 181`). -/
-def codeCount : Nat := 166377570312823648881394061712938016
+/-- The number of accepted encodings (pairs of 16-digit hexadecimal words with digit sum
+`targetSum = 312`), `≈ 2^128 / 3032.57`. -/
+def codeCount : Nat := 112209344069469584472697770879116936
 
-theorem gfDigit_eq (X : Nat) : gfDigit X = 1 + X + X ^ 2 + X ^ 3 + X ^ 4 + X ^ 5 + X ^ 6 + X ^ 7 := by
+theorem gfDigit_eq (X : Nat) : gfDigit X = 1 + X + X ^ 2 + X ^ 3 + X ^ 4 + X ^ 5 + X ^ 6 + X ^ 7 +
+    X ^ 8 + X ^ 9 + X ^ 10 + X ^ 11 + X ^ 12 + X ^ 13 + X ^ 14 + X ^ 15 := by
   simp [gfDigit, Finset.sum_range_succ]
 
-theorem npair_target : npair 21 targetSum = codeCount := by
-  rw [npair_coeff 21 targetSum (2 ^ 128) (by norm_num) (by simp [targetSum]), gfDigit_eq]
+set_option exponentiation.threshold 1024 in
+theorem npair_target : npair 16 targetSum = codeCount := by
+  rw [npair_coeff 16 targetSum (2 ^ 129) (by norm_num) (by simp [targetSum]), gfDigit_eq]
   simp only [targetSum]
   decide
 
 /-- The decoding condition on the low 128 bits `k`. -/
-def Dok (k : Nat) : Prop :=
-  k % 2 ^ 64 < 2 ^ 63 ∧ k / 2 ^ 64 % 2 ^ 64 < 2 ^ 63 ∧
-    ds 21 (k % 2 ^ 64) + ds 21 (k / 2 ^ 64 % 2 ^ 64) = targetSum
+def Dok (k : Nat) : Prop := ds 16 (k % 2 ^ 64) + ds 16 (k / 2 ^ 64 % 2 ^ 64) = targetSum
 
 instance : DecidablePred Dok := fun k => by unfold Dok; infer_instance
 
@@ -267,7 +268,7 @@ theorem Dok_high (a b : Nat) : Dok (a + 2 ^ 128 * b) ↔ Dok a := by
   unfold Dok; rw [h1, h2]
 
 theorem Dok_split (a0 a1 : Nat) (h0 : a0 < 2 ^ 64) (h1 : a1 < 2 ^ 64) :
-    Dok (a0 + 2 ^ 64 * a1) ↔ (a0 < 2 ^ 63 ∧ a1 < 2 ^ 63 ∧ ds 21 a0 + ds 21 a1 = targetSum) := by
+    Dok (a0 + 2 ^ 64 * a1) ↔ ds 16 a0 + ds 16 a1 = targetSum := by
   have e1 : (a0 + 2 ^ 64 * a1) % 2 ^ 64 = a0 := by
     rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt h0]
   have e2 : (a0 + 2 ^ 64 * a1) / 2 ^ 64 % 2 ^ 64 = a1 := by
@@ -275,45 +276,15 @@ theorem Dok_split (a0 a1 : Nat) (h0 : a0 < 2 ^ 64) (h1 : a1 < 2 ^ 64) :
       Nat.mod_eq_of_lt h1]
   unfold Dok; rw [e1, e2]
 
-theorem sum_half (M : Nat) (f : Nat → Nat) (P : Nat → Prop) [DecidablePred P] :
-    (∑ x ∈ range (M + M), if x < M ∧ P x then f x else 0) = ∑ x ∈ range M, if P x then f x else 0 := by
-  rw [Finset.sum_range_add]
-  have : ∀ x ∈ range M, (if M + x < M ∧ P (M + x) then f (M + x) else 0) = 0 := by
-    intro x _; rw [if_neg (by omega)]
-  rw [Finset.sum_congr rfl this, Finset.sum_const_zero, Nat.add_zero]
-  refine Finset.sum_congr rfl fun x hx => ?_
-  have := mem_range.mp hx
-  by_cases hp : P x <;> simp [hp, this]
-
-theorem Dok_split' (M a0 a1 : Nat) (hM : M = 2 ^ 63) (h0 : a0 < M + M) (h1 : a1 < M + M) :
-    Dok (a0 + (M + M) * a1) ↔ (a0 < M ∧ a1 < M ∧ ds 21 a0 + ds 21 a1 = targetSum) := by
-  have hMM : M + M = 2 ^ 64 := by subst hM; norm_num
-  rw [hMM] at h0 h1 ⊢
-  rw [Dok_split a0 a1 h0 h1, hM]
-
-theorem count_Dok_low (M : Nat) (hM : M = 2 ^ 63) :
-    (∑ a ∈ range ((M + M) * (M + M)), if Dok a then 1 else 0) =
-      ∑ a1 ∈ range M, ∑ a0 ∈ range M, if ds 21 a0 + ds 21 a1 = targetSum then 1 else 0 := by
+theorem count_Dok_low (M : Nat) (hM : M = 2 ^ 64) :
+    (∑ a ∈ range (M * M), if Dok a then 1 else 0) =
+      ∑ a1 ∈ range M, ∑ a0 ∈ range M, if ds 16 a0 + ds 16 a1 = targetSum then 1 else 0 := by
   rw [sum_range_mul]
-  have step : ∀ a1 ∈ range (M + M),
-      (∑ a0 ∈ range (M + M), if Dok (a0 + (M + M) * a1) then 1 else 0)
-      = if a1 < M then ∑ a0 ∈ range M, (if ds 21 a0 + ds 21 a1 = targetSum then 1 else 0) else 0 := by
-    intro a1 ha1
-    rw [Finset.sum_congr rfl fun a0 ha0 => by
-      rw [if_congr (Dok_split' M a0 a1 hM (mem_range.mp ha0) (mem_range.mp ha1)) rfl rfl]]
-    by_cases h : a1 < M
-    · rw [if_pos h]
-      have := sum_half M (fun _ => 1) (fun a0 => ds 21 a0 + ds 21 a1 = targetSum)
-      rw [← this]
-      refine Finset.sum_congr rfl fun a0 _ => ?_
-      by_cases h' : a0 < M <;> simp [h, h']
-    · rw [if_neg h]
-      exact Finset.sum_eq_zero fun a0 _ => by simp [h]
-  rw [Finset.sum_congr rfl step]
-  have := sum_half M (fun a1 => ∑ a0 ∈ range M, if ds 21 a0 + ds 21 a1 = targetSum then 1 else 0)
-    (fun _ => True)
-  simp only [and_true, if_true] at this
-  exact this
+  refine Finset.sum_congr rfl fun a1 ha1 => Finset.sum_congr rfl fun a0 ha0 => ?_
+  have h0 := mem_range.mp ha0
+  have h1 := mem_range.mp ha1
+  subst hM
+  exact if_congr (Dok_split a0 a1 h0 h1) rfl rfl
 
 theorem count_Dok (W T : Nat) (hW : W = 2 ^ 128) :
     (∑ k ∈ range (W * T), if Dok k then 1 else 0) = T * ∑ a ∈ range W, if Dok a then 1 else 0 := by
@@ -325,12 +296,12 @@ theorem count_Dok (W T : Nat) (hW : W = 2 ^ 128) :
 
 theorem count_Dok_256 :
     ((range (2 ^ 256)).filter Dok).card = 2 ^ 128 * codeCount := by
-  have h1 := count_Dok ((2 ^ 63 + 2 ^ 63) * (2 ^ 63 + 2 ^ 63)) (2 ^ 128) (by norm_num)
-  have h2 := count_Dok_low (2 ^ 63) rfl
-  have h3 : npair 21 targetSum = ∑ a1 ∈ range (2 ^ 63), ∑ a0 ∈ range (2 ^ 63),
-      if ds 21 a0 + ds 21 a1 = targetSum then 1 else 0 := by
-    unfold npair; rw [show (8 : Nat) ^ 21 = 2 ^ 63 by norm_num]
-  have e : (2 : Nat) ^ 256 = (2 ^ 63 + 2 ^ 63) * (2 ^ 63 + 2 ^ 63) * 2 ^ 128 := by norm_num
+  have h1 := count_Dok (2 ^ 64 * 2 ^ 64) (2 ^ 128) (by norm_num)
+  have h2 := count_Dok_low (2 ^ 64) rfl
+  have h3 : npair 16 targetSum = ∑ a1 ∈ range (2 ^ 64), ∑ a0 ∈ range (2 ^ 64),
+      if ds 16 a0 + ds 16 a1 = targetSum then 1 else 0 := by
+    unfold npair; rw [show (16 : Nat) ^ 16 = 2 ^ 64 by norm_num]
+  have e : (2 : Nat) ^ 256 = 2 ^ 64 * 2 ^ 64 * 2 ^ 128 := by norm_num
   rw [card_filter_range, e, h1, h2, ← h3, npair_target]
 
 theorem slice_leBytes16 (v : Nat) :
@@ -350,7 +321,7 @@ theorem decode_none_iff (u : BitVec 256) :
   have e1 : (256 : Nat) ^ 8 = 2 ^ 64 := by norm_num
   rw [e1]
   unfold Dok
-  split_ifs with ha hb <;> simp_all
+  split_ifs with ha <;> simp_all
 
 /-- A fresh encoding is rejected with probability `1 - codeCount / 2^128`. -/
 theorem probEvent_decode_none :

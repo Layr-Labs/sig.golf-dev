@@ -317,7 +317,7 @@ theorem words_th16 (t lay tau p j : Nat) (v : Val) (hv : v.length = 16) :
 
 /-- The HASH input of a chain step (value-last format `tw || 0^32 || v`, `fmt_chainInput`). -/
 theorem hashInput_eq_chain (t : MachineState) (lay tau e i mu : Nat) (v : Val) (hv : v.length = 16)
-    (hmu : 1 ≤ mu) (hmu' : mu ≤ 8) (hi : i < 2 ^ 24)
+    (hmu : 1 ≤ mu) (hmu' : mu ≤ 16) (hi : i < 2 ^ 24)
     (h11 : t.getReg .x11 = BitVec.ofNat 64 64) (h10 : (t.getReg .x10).toNat % 8 = 0)
     (hw : t.readWords (t.getReg .x10) 8 =
       twWords 1 lay tau (mu - 1 + 256 * i) e ++ [0, 0, 0, 0] ++ wordsOf v) :
@@ -360,7 +360,7 @@ theorem words_th32 (t lay tau p j : Nat) (l r : Val) (hl : l.length = 16) (hr : 
   simp
 
 /-- Inputs `tw | P | v_0 .. v_{m-1}` with `m` 16-byte values filling whole blocks
-(`32 + 16 m = 64 (n+1)`): OTS leaf (`m = 42`), FORS roots (`m = 14`). -/
+(`32 + 16 m = 64 (n+1)`): FORS roots (`m = 14`). -/
 theorem words_thVals (t lay tau p j : Nat) (vs : List Val) (hv : ∀ v ∈ vs, v.length = 16) (n : Nat)
     (hn : 32 + 16 * vs.length = 64 * (n + 1)) :
     padBlocks (thInput (tweak t lay tau p j) vs.flatten).length = n ∧
@@ -374,6 +374,23 @@ theorem words_thVals (t lay tau p j : Nat) (vs : List Val) (hv : ∀ v ∈ vs, v
   simp only [length_thInput, length_tweak, hl]
   rw [show 64 * (n + 1) - (16 + 16 + 16 * vs.length) = 0 by omega, show zeros 0 = [] from rfl,
     List.append_nil, wordsOf_flatten _ hv]
+
+/-- Inputs `tw | P | v_0 .. v_{m-1}` with `m` 16-byte values followed by 32 zero bytes of padding
+(`32 + 16 m + 32 = 64 (n+1)`): the OTS leaf (`m = 32`, 544 bytes queried as 576). -/
+theorem words_thVals_pad (t lay tau p j : Nat) (vs : List Val) (hv : ∀ v ∈ vs, v.length = 16)
+    (n : Nat) (hn : 32 + 16 * vs.length + 32 = 64 * (n + 1)) :
+    padBlocks (thInput (tweak t lay tau p j) vs.flatten).length = n ∧
+    wordsOf (padTo64 (thInput (tweak t lay tau p j) vs.flatten)) =
+      twWords t lay tau p j ++ [0, 0] ++ (vs.map wordsOf).flatten ++ [0, 0, 0, 0] := by
+  have hl := length_flatten_vals vs hv
+  obtain ⟨h1, h2⟩ := padTo64_eq (thInput (tweak t lay tau p j) vs.flatten) n
+    (by simp [hl]; omega) (by simp [hl]; omega)
+  refine ⟨h1, ?_⟩
+  rw [h2, wordsOf_thInput_pad]
+  simp only [length_thInput, length_tweak, hl]
+  rw [show 64 * (n + 1) - (16 + 16 + 16 * vs.length) = 8 * 4 by omega,
+    wordsOf_append _ _ (by rw [hl]; omega), wordsOf_flatten _ hv, wordsOf_zeros]
+  simp
 
 theorem wordsOf_le32_pad (c : Nat) : wordsOf (le32 c ++ zeros 12) = [BitVec.ofNat 64 (c % 2 ^ 32), 0] := by
   rw [show zeros 12 = zeros 4 ++ zeros (8 * 1) from List.replicate_add 4 8 (0 : Byte), ← List.append_assoc,
