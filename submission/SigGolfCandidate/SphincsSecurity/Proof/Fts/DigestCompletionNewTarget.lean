@@ -31,7 +31,7 @@ theorem digestCompletion_new_targetShapeMoments_eq (key : SecretKey) (message : 
         obtain ⟨otherIndex, otherLeaves, hother⟩ := hcompletion.1.2 signature hs
         have hr : signature.randomness = randomness := congrArg Prod.fst (Option.some.inj (hother.symm.trans hselected))
         simp [eligibleSigningView?, hr]
-  have hlog (required : Finset IndexGroup) :
+  have hlog (required : Finset FtsTree) :
       normalizedTargetLogProduct key result.2 (log ++ [⟨message, result.1.1⟩]) (messageDigestPayload key.root message randomness) target required =
         normalizedTargetLogProduct key before log (messageDigestPayload key.root message randomness) target required := by
     have heq : normalizedTargetLogProduct key result.2 (log ++ [⟨message, result.1.1⟩])
@@ -59,11 +59,11 @@ theorem digestCompletion_newTargetEnvelopeCharge_eq_selected
     (result : (Option Signature × Option FewTimeView) × QueryCache HashSpec)
     (hcompletion : DigestCompletionPreservesMessages key loop result)
     (log : QueryLog SigningSpec) (hsigned : SigningDigestsCached key.parameter before key.root log)
-    (reuse : ENNReal) (queries signings : Nat)
-    (groups : Finset (Finset IndexGroup)) (remaining : Finset IndexGroup) :
-    newTargetEnvelopeCharge key before result.2 (log ++ [⟨message, result.1.1⟩]) reuse queries signings groups remaining =
+    (uniform reuse arrival : ENNReal) (queries signings : Nat)
+    (groups : Finset (Finset FtsTree)) (remaining : Finset FtsTree) :
+    newTargetEnvelopeCharge key before result.2 (log ++ [⟨message, result.1.1⟩]) uniform reuse arrival queries signings groups remaining =
       selectedLoopInputWeight key message (fun input target => if before input = none then
-        targetShapeEnvelope (signerRate target) reuse (arrivalRate target) queries signings
+        targetShapeEnvelope uniform reuse arrival queries signings
           (targetShapeMoments key before log (payloadOf input) target) groups remaining else 0) loop := by
   unfold newTargetEnvelopeCharge
   rw [digestCompletion_cacheMessageWeight_eq key message before loop hloop result hcompletion,
@@ -85,22 +85,21 @@ theorem expected_digestCompletion_newTargetEnvelopeCharge_le_mass_mul {α : Type
     (hcompletion : ∀ loop ∈ support ((simulateQ romImpl (signDigestLoop digestAttemptLimit key message)).run before),
       ∀ result ∈ support (finish loop), DigestCompletionPreservesMessages key loop (record result))
     (log : QueryLog SigningSpec) (hsigned : SigningDigestsCached key.parameter before key.root log)
-    (reuse : ENNReal) (queries signings : Nat)
-    (groups : Finset (Finset IndexGroup)) (remaining : Finset IndexGroup) (hvalid : TargetShapeValid groups remaining) :
+    (uniform reuse arrival : ENNReal) (queries signings : Nat)
+    (groups : Finset (Finset FtsTree)) (remaining : Finset FtsTree) (hvalid : TargetShapeValid groups remaining) :
     (∑' result, Pr[= result | (simulateQ romImpl (signDigestLoop digestAttemptLimit key message)).run before >>= finish] *
       newTargetEnvelopeCharge key before (record result).2 (log ++ [⟨message, (record result).1.1⟩])
-        reuse queries signings groups remaining) ≤
+        uniform reuse arrival queries signings groups remaining) ≤
       freshDigestSelectionProbability key message before *
-        (admissibleProbability⁻¹ * ((Fintype.card Index : ENNReal)⁻¹ *
-          targetIndexEnvelope (Fintype.card Index : ENNReal)⁻¹ reuse cachedIndexRate queries signings
-            (targetIndexMoments key before log) groups.card remaining.card)) := by
+        ((Fintype.card Index : ENNReal)⁻¹ *
+          targetIndexEnvelope uniform reuse arrival queries signings (targetIndexMoments key before log) groups.card remaining.card) := by
   by_cases hexists : ∃ payload, before (tweakableHashInput key.parameter .message payload) = none
   · obtain ⟨reference, hreference⟩ := hexists
-    let weight := fun source => targetShapeEnvelope (signerRate source) reuse (arrivalRate source) queries signings
+    let weight := fun source => targetShapeEnvelope uniform reuse arrival queries signings
       (targetShapeMoments key before log reference source) groups remaining
     have hbound := expected_digestCompletion_freshCost_le key message before finish
       (fun result => newTargetEnvelopeCharge key before (record result).2 (log ++ [⟨message, (record result).1.1⟩])
-        reuse queries signings groups remaining) weight (by
+        uniform reuse arrival queries signings groups remaining) weight (by
           intro loop hl result hr
           rw [digestCompletion_newTargetEnvelopeCharge_eq_selected key message before loop hl (record result)
             (hcompletion loop hl result hr) log hsigned]
@@ -112,12 +111,13 @@ theorem expected_digestCompletion_newTargetEnvelopeCharge_le_mass_mul {α : Type
               · simp only [selectedLoopInputWeight, hs, hfresh, if_true, payloadOf_tweakableHashInput, weight]
                 rw [targetShapeMoments_fresh_payload_eq key before log _ reference hfresh hreference hsigned]
               · simp only [selectedLoopInputWeight, hs, if_neg hfresh, le_refl])
-    exact hbound.trans (mul_le_mul' le_rfl
-      (expected_signer_targetShapeEnvelope_le key before log reference hreference hsigned
-        reuse queries signings groups remaining hvalid))
+    apply hbound.trans_eq
+    exact congrArg (fun value => freshDigestSelectionProbability key message before * value)
+      (expected_fresh_targetShapeEnvelope key before log reference hreference hsigned
+        uniform reuse arrival queries signings groups remaining hvalid)
   · have hzero (result : α) : newTargetEnvelopeCharge key before (record result).2 (log ++ [⟨message, (record result).1.1⟩])
-        reuse queries signings groups remaining = 0 :=
-      newTargetEnvelopeCharge_of_no_new key before (record result).2 _ reuse queries signings groups remaining
+        uniform reuse arrival queries signings groups remaining = 0 :=
+      newTargetEnvelopeCharge_of_no_new key before (record result).2 _ uniform reuse arrival queries signings groups remaining
         (fun payload _ hfresh _ _ => hexists ⟨payload, hfresh⟩)
     simp only [hzero, mul_zero, tsum_zero, zero_le]
 
