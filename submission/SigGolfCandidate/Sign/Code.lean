@@ -17,10 +17,10 @@ def seg57 : List (BitVec 32) := [0x16803083#32, 0x14e09863#32]
 def seg59 : List (BitVec 32) := [0x17003083#32, 0x14f09463#32]
 /-- instructions 61 .. 62: ld ra, 376(x0); bne ra, a6, +320 -/
 def seg61 : List (BitVec 32) := [0x17803083#32, 0x15009063#32]
-/-- instructions 63 .. 64: lui t2, 0x100; addi t1, x0, 0 -/
-def seg63 : List (BitVec 32) := [0x001003b7#32, 0x00000313#32]
-/-- instructions 65 .. 69 (dig_loop): sw t1, 1572(x0); addi a0, x0, 1568; addi a1, x0, 128; addi a2, x0, 320; ecall  -/
-def seg65 : List (BitVec 32) := [0x62602223#32, 0x62000513#32, 0x08000593#32, 0x14000613#32, 0x00000073#32]
+/-- instructions 63 .. 64: load the trial limit and jump to the randomizer packer. -/
+def seg63 : List (BitVec 32) := [0x001003b7#32, 0x3710206f#32]
+/-- instructions 65 .. 69 (dig_loop): store the trial at 0x7bc, then hash 64 bytes at 0x780. -/
+def seg65 : List (BitVec 32) := [0x7a602e23#32, 0x78000513#32, 0x04000593#32, 0x14000613#32, 0x00000073#32]
 /-- instructions 70 .. 77: ld ra, 320(x0); ld sp, 328(x0); sd ra, 48(x0); sd sp, 56(x0); addi a0, x0, 32; addi a1, x0, 64 ... -/
 def seg70 : List (BitVec 32) := [0x14003083#32, 0x14803103#32, 0x02103823#32, 0x02203c23#32, 0x02000513#32, 0x04000593#32, 0x16000613#32, 0x00000073#32]
 /-- instructions 78 .. 81: lui tp, 0x400; sd tp, 1880(x0); addi s0, x0, 0; addi a6, x0, 34 -/
@@ -128,7 +128,7 @@ def seg346 : List (BitVec 32) := [0x12603823#32, 0x10000513#32, 0x04000593#32, 0
 /-- instructions 351 .. 354: ld ra, 320(x0); ld sp, 328(x0); or gp, ra, sp; blt gp, x0, +92 -/
 def seg351 : List (BitVec 32) := [0x14003083#32, 0x14803103#32, 0x0020e1b3#32, 0x0401ce63#32]
 /-- instructions 355 .. 375: srli t3, ra, 3; and t3, t3, s10; and t4, ra, s10; add t3, t3, t4; srli t4, sp, 3; and t4, t4, s10 ... -/
-def seg355 : List (BitVec 32) := [0x0030de13#32, 0x01ae7e33#32, 0x01a0feb3#32, 0x01de0e33#32, 0x00315e93#32, 0x01aefeb3#32, 0x01de0e33#32, 0x01a17eb3#32, 0x01de0e33#32, 0x006e5e93#32, 0x01de0e33#32, 0x01be7e33#32, 0x00ce5e93#32, 0x01de0e33#32, 0x018e5e93#32, 0x01de0e33#32, 0x030e5e93#32, 0x01de0e33#32, 0x7ffe7e13#32, 0xf4ce0e13#32, 0x000e1463#32]
+def seg355 : List (BitVec 32) := [0x0030de13#32, 0x01ae7e33#32, 0x01a0feb3#32, 0x01de0e33#32, 0x00315e93#32, 0x01aefeb3#32, 0x01de0e33#32, 0x01a17eb3#32, 0x01de0e33#32, 0x006e5e93#32, 0x01de0e33#32, 0x01be7e33#32, 0x00ce5e93#32, 0x01de0e33#32, 0x018e5e93#32, 0x01de0e33#32, 0x030e5e93#32, 0x01de0e33#32, 0x7ffe7e13#32, 0xf4be0e13#32, 0x000e1463#32]
 /-- instructions 376 .. 376: jal x0, +24 -/
 def seg376 : List (BitVec 32) := [0x0180006f#32]
 /-- instructions 377 .. 378 (enc_next): addi t1, t1, 1; bne t1, t2, -128 -/
@@ -218,8 +218,12 @@ def seg2781 : List (BitVec 32) := [0x00002e37#32, 0x904e0e13#32, 0x00005eb7#32, 
 /-- instructions 2841 .. 2843 (success): addi t0, x0, 1; addi a0, x0, 0; ecall  -/
 def seg2841 : List (BitVec 32) := [0x00100293#32, 0x00000513#32, 0x00000073#32]
 
+
+/-- instructions 2844 .. 2886: pack one-block randomizer input in 0x780..0x7bf. -/
+def seg2844 : List (BitVec 32) := [0x64003083#32, 0x64803103#32, 0x65003183#32, 0x65803203#32, 0x66003403#32, 0x66803483#32, 0x67003503#32, 0x67803583#32, 0x01009613#32, 0x70166613#32, 0x78c03023#32, 0x0300d613#32, 0x01011693#32, 0x00d66633#32, 0x78c03423#32, 0x03015613#32, 0x01019693#32, 0x00d66633#32, 0x78c03823#32, 0x0301d613#32, 0x01021693#32, 0x02069693#32, 0x0206d693#32, 0x00d66633#32, 0x02041693#32, 0x00d66633#32, 0x78c03c23#32, 0x02045613#32, 0x02049693#32, 0x00d66633#32, 0x7ac03023#32, 0x0204d613#32, 0x02051693#32, 0x00d66633#32, 0x7ac03423#32, 0x02055613#32, 0x02059693#32, 0x00d66633#32, 0x7ac03823#32, 0x0205d613#32, 0x7ac03c23#32, 0x00000313#32, 0xbecfd06f#32]
+
 /-- Segment table of the sign image. -/
-def L : Rv.Layout := [(0, seg0), (55, seg55), (57, seg57), (59, seg59), (61, seg61), (63, seg63), (65, seg65), (70, seg70), (78, seg78), (82, seg82), (89, seg89), (94, seg94), (104, seg104), (105, seg105), (108, seg108), (110, seg110), (112, seg112), (115, seg115), (119, seg119), (121, seg121), (128, seg128), (131, seg131), (134, seg134), (136, seg136), (137, seg137), (139, seg139), (142, seg142), (145, seg145), (179, seg179), (181, seg181), (187, seg187), (194, seg194), (202, seg202), (208, seg208), (210, seg210), (211, seg211), (215, seg215), (232, seg232), (234, seg234), (238, seg238), (249, seg249), (256, seg256), (259, seg259), (263, seg263), (264, seg264), (266, seg266), (271, seg271), (286, seg286), (288, seg288), (290, seg290), (293, seg293), (296, seg296), (316, seg316), (318, seg318), (321, seg321), (322, seg322), (329, seg329), (331, seg331), (346, seg346), (351, seg351), (355, seg355), (376, seg376), (377, seg377), (379, seg379), (382, seg382), (509, seg509), (522, seg522), (529, seg529), (531, seg531), (537, seg537), (549, seg549), (550, seg550), (556, seg556), (564, seg564), (566, seg566), (567, seg567), (573, seg573), (575, seg575), (584, seg584), (589, seg589), (591, seg591), (592, seg592), (609, seg609), (626, seg626), (628, seg628), (630, seg630), (637, seg637), (646, seg646), (648, seg648), (654, seg654), (665, seg665), (666, seg666), (673, seg673), (676, seg676), (685, seg685), (689, seg689), (701, seg701), (718, seg718), (1158, seg1158), (1438, seg1438), (1749, seg1749), (2129, seg2129), (2341, seg2341), (2781, seg2781), (2841, seg2841)]
+def L : Rv.Layout := [(0, seg0), (55, seg55), (57, seg57), (59, seg59), (61, seg61), (63, seg63), (65, seg65), (70, seg70), (78, seg78), (82, seg82), (89, seg89), (94, seg94), (104, seg104), (105, seg105), (108, seg108), (110, seg110), (112, seg112), (115, seg115), (119, seg119), (121, seg121), (128, seg128), (131, seg131), (134, seg134), (136, seg136), (137, seg137), (139, seg139), (142, seg142), (145, seg145), (179, seg179), (181, seg181), (187, seg187), (194, seg194), (202, seg202), (208, seg208), (210, seg210), (211, seg211), (215, seg215), (232, seg232), (234, seg234), (238, seg238), (249, seg249), (256, seg256), (259, seg259), (263, seg263), (264, seg264), (266, seg266), (271, seg271), (286, seg286), (288, seg288), (290, seg290), (293, seg293), (296, seg296), (316, seg316), (318, seg318), (321, seg321), (322, seg322), (329, seg329), (331, seg331), (346, seg346), (351, seg351), (355, seg355), (376, seg376), (377, seg377), (379, seg379), (382, seg382), (509, seg509), (522, seg522), (529, seg529), (531, seg531), (537, seg537), (549, seg549), (550, seg550), (556, seg556), (564, seg564), (566, seg566), (567, seg567), (573, seg573), (575, seg575), (584, seg584), (589, seg589), (591, seg591), (592, seg592), (609, seg609), (626, seg626), (628, seg628), (630, seg630), (637, seg637), (646, seg646), (648, seg648), (654, seg654), (665, seg665), (666, seg666), (673, seg673), (676, seg676), (685, seg685), (689, seg689), (701, seg701), (718, seg718), (1158, seg1158), (1438, seg1438), (1749, seg1749), (2129, seg2129), (2341, seg2341), (2781, seg2781), (2841, seg2841), (2844, seg2844)]
 
 theorem layout_ok : layoutOk 0 L = true := by decide +kernel
 
@@ -441,5 +445,8 @@ theorem codeAt_2781 : CodeAt image (pcOf 2781) seg2781 :=
   codeAt_layout code_eq layout_ok (i := 103) (by kernel_rfl) (by decide)
 theorem codeAt_2841 : CodeAt image (pcOf 2841) seg2841 :=
   codeAt_layout code_eq layout_ok (i := 104) (by kernel_rfl) (by decide)
+
+theorem codeAt_2844 : CodeAt image (pcOf 2844) seg2844 :=
+  codeAt_layout code_eq layout_ok (i := 105) (by kernel_rfl) (by decide)
 
 end SigGolfCandidate.Sign

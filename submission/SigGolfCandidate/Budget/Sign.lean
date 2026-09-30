@@ -7,12 +7,12 @@ From any random-oracle cache without tweak types `4`, `7`, `12` (e.g. after keyg
 queries types `0..3`, `13`, `14`), and for **every** cache argument, the expectation of
 `z ^ (compressions of signRef sk cache m)` is at most
 
-  `z ^ 1025 * (bD * (z ^ 40959 * (bC ^ 5 * z ^ (73244 + 212))))`,
+  `z ^ 1025 * (bD * (z ^ 40959 * (bC ^ 5 * z ^ (73244 + 213))))`,
 
 where `bD` bounds the digest search and `bC` each of the 5 counter searches (`V_signRef`). The
-deterministic part (paired PRF secrets, 5 layers (11,6,6,6,5), T = 180) is MAC 1025 + PORS tree
-40959 + layers 1..4 73244 + top layer 212 = 115440 blocks (top layer: 21 paired secret queries,
-`targetSum = 180` chain steps, 11 masks).
+deterministic part (paired PRF secrets, 5 layers (11,6,6,6,5), T = 181) is MAC 1025 + PORS tree
+40959 + layers 1..4 73244 + top layer 213 = 115441 blocks (top layer: 21 paired secret queries,
+`targetSum = 181` chain steps, 11 masks).
 -/
 
 namespace SigGolfCandidate.Budget
@@ -68,7 +68,7 @@ theorem spec_topPath (S cache : List Byte) (hS : S.length = 32) (e : Nat) :
   exact spec_hash16_bind _ trivial (mask_ok S hS l _).2 (fun _ _ => Spec.pure _ 0 trivial) le_rfl
 
 /-- Compressions of the top layer after its counter search. -/
-def topCost : Nat := 21 + 180 + 11
+def topCost : Nat := 21 + 181 + 11
 
 theorem V_signTop (z bC : ℝ≥0∞) (hz : 1 ≤ z) (hbC : 1 ≤ bC)
     (hstepC : z * (rhoC * bC + (1 - rhoC)) ≤ bC) (S cache : List Byte) (hS : S.length = 32)
@@ -189,12 +189,12 @@ theorem mac_ok (S cache : List Byte) (hS : S.length = 32) :
 
 /-- The signing bound without the MAC check. -/
 noncomputable abbrev signBound (z bD bC : ℝ≥0∞) : ℝ≥0∞ :=
-  bD * (z ^ 40959 * (bC ^ 5 * z ^ (73244 + 212)))
+  bD * (z ^ 40959 * (bC ^ 5 * z ^ (73244 + 213)))
 
 set_option maxRecDepth 100000 in
 /-- The expectation bound for the part of `signList` after the MAC check, from `Inv0`. -/
 theorem V_signBody (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC : 1 ≤ bC)
-    (hstepD : z ^ 3 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD)
+    (hstepD : z ^ 2 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD)
     (hstepC : z * (rhoC * bC + (1 - rhoC)) ≤ bC)
     (S cache m : List Byte) (hS : S.length = 32) (hm : m.length = 32) (c : RCache)
     (hinv : CacheInv Inv0 c) :
@@ -208,7 +208,7 @@ theorem V_signBody (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC :
         match ← signLayers S cache (idxOf N) (nLayers - 1) M with
         | none => pure none
         | some lays => pure (some (serialize rho fts lays))) c ≤ signBound z bD bC := by
-  have hbig : 1 ≤ z ^ 40959 * (bC ^ 5 * z ^ (73244 + 212)) :=
+  have hbig : 1 ≤ z ^ 40959 * (bC ^ 5 * z ^ (73244 + 213)) :=
     one_le_mul (one_le_pow₀ hz) (one_le_mul (one_le_pow₀ hbC) (one_le_pow₀ hz))
   refine (V_bind_le z _ _ c _ fun x hx => ?_).trans (mul_le_mul' ?_ le_rfl)
   · have hx' := (spec_searchDigest S m hS hm aMax 0).support
@@ -218,7 +218,7 @@ theorem V_signBody (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC :
     rcases o with _ | ⟨rho, N⟩
     · simpa using hbig
     · dsimp only
-      refine (V_bind_le z _ _ c1 (bC ^ 5 * z ^ (73244 + 212)) fun y hy => ?_).trans ?_
+      refine (V_bind_le z _ _ c1 (bC ^ 5 * z ^ (73244 + 213)) fun y hy => ?_).trans ?_
       · have hy' := (spec_buildPorsTree S hS (idxOf N)).support (I := fun q => qbyte q 1 ≠ 4)
           (fun q hq => by unfold PP at hq; omega) c1 hx'.2 y hy
         obtain ⟨⟨levels, secrets⟩, c2⟩ := y
@@ -226,7 +226,7 @@ theorem V_signBody (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC :
         refine (V_bind_le z _ _ c2 1 fun r _ => ?_).trans ?_
         · obtain ⟨r, _⟩ := r
           rcases r with _ | lays <;> simp
-        · rw [mul_one, ← layerCost_4, show (212 : Nat) = topCost from rfl]
+        · rw [mul_one, ← layerCost_4, show (213 : Nat) = topCost from rfl]
           refine V_signLayers z bC hz hbC hstepC S cache hS (idxOf N) (nLayers - 1) _ c2
             (by decide) hy'.1 ?_
           exact hy'.2.mono fun q h h4 => absurd h4 h
@@ -238,8 +238,11 @@ theorem V_signBody (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC :
     · cases hq : c (fmt (rndInput S m a')) with
       | none => rfl
       | some u =>
-        exfalso; have := (hinv _ u hq).2.1; unfold rndInput at this; rw [qbyte_tag] at this
-        exact this rfl
+        exfalso
+        have h7 : qbyte (fmt (rndInput S m a')) 1 = 7 := by
+          rw [qbyte_fmt _ _ (by decide)]
+          simp [rndInput, byte_toNat]
+        exact (hinv _ u hq).2.1 h7
     · cases hq : c (fmt (digestInput rho m)) with
       | none => rfl
       | some u =>
@@ -248,7 +251,7 @@ theorem V_signBody (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC :
 
 /-- The expectation bound for `signList` (MAC check first), for every cache argument. -/
 theorem V_signList (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC : 1 ≤ bC)
-    (hstepD : z ^ 3 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD)
+    (hstepD : z ^ 2 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD)
     (hstepC : z * (rhoC * bC + (1 - rhoC)) ≤ bC)
     (S cache m : List Byte) (hS : S.length = 32) (hm : m.length = 32) (c : RCache)
     (hinv : CacheInv Inv0 c) :
@@ -266,7 +269,7 @@ theorem V_signList (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC :
       (one_le_pow₀ hz)))
 
 theorem V_signRef (z bD bC : ℝ≥0∞) (hz : 1 ≤ z) (hbD : 1 ≤ bD) (hbC : 1 ≤ bC)
-    (hstepD : z ^ 3 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD)
+    (hstepD : z ^ 2 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD)
     (hstepC : z * (rhoC * bC + (1 - rhoC)) ≤ bC)
     (sk : Bytes 32) (cache : Cache) (m : Bytes 32) (c : RCache) (hinv : CacheInv Inv0 c) :
     V z (signRef sk cache m) c ≤ z ^ 1025 * signBound z bD bC := by

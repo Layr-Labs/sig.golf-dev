@@ -5,12 +5,12 @@ import VCVio.OracleComp.QueryTracking.RandomOracle.Simulation
 /-!
 # SPHINCS+ scheme
 
-Parameters, serialized hash inputs, key generation, signing, and verification for the instance defined in `doc/sphincs/main.tex`, with the changes of the SPHINCS-golf variant: five layers of heights `(11,6,6,6,5)`, target sum `182`, paired secret derivations (one query yields two secrets), a top tree cached by key generation (masked, and authenticated by a MAC keyed with the master seed), no public-parameter derivation (`P = 0`), a message digest that does not bind the root, a verifier that rejects counters at or above `C_max`, and a signer that builds every tree it touches exactly once, in the query order of the reference implementation.
+Parameters, serialized hash inputs, key generation, signing, and verification for the instance defined in `doc/sphincs/main.tex`, with the changes of the SPHINCS-golf variant: five layers of heights `(11,6,6,6,5)`, target sum `181`, paired secret derivations (one query yields two secrets), a top tree cached by key generation (masked, and authenticated by a MAC keyed with the master seed), no public-parameter derivation (`P = 0`), a message digest that does not bind the root, a verifier that rejects counters at or above `C_max`, and a signer that builds every tree it touches exactly once, in the query order of the reference implementation.
 
 The few-time signature is PORS+FP (`work/design/SPEC-pors.md`, reference `work/py-pors/ref.py`): one Merkle
 tree of height `14` per instance `idx`, the full 256-bit digest split into `idx` (34 bits) and `k = 15`
 leaf indices, admissible when the indices are distinct and their octopus (the pruned authentication set)
-has at most `120` nodes. The signature is *witness-shaped*: the sorted leaves' digest slots, their secrets,
+has at most `118` nodes. The signature is *witness-shaped*: the sorted leaves' digest slots, their secrets,
 and the stack-machine segments of the verifier with the authentication nodes they fold. The verifier is the
 stack machine of `ref.pors_root`, and the tree root is the bottom layer's message. Tree nodes are hashed
 under their heap index (tag `10`, position `0`), the relabeled form of `ref.py`'s node tweaks.
@@ -31,7 +31,7 @@ def counterBits : Nat := 32
 def winternitzBits : Nat := 3
 def chainLength : Nat := 2 ^ winternitzBits
 def numChains : Nat := 42
-def targetSum : Nat := 180
+def targetSum : Nat := 181
 def numLayers : Nat := 5
 def totalHeight : Nat := 34
 /-- The tallest layer, the top one, `h_0 = 11`, which bounds every layer's leaf index. -/
@@ -40,8 +40,8 @@ def maxLayerHeight : Nat := 11
 def ftsTreeHeight : Nat := 14
 /-- `k`, the leaf indices a digest carries (its slots) and the leaves a signature opens. -/
 def ftsOpenings : Nat := 15
-/-- The authentication-node budget: an admissible digest's octopus has at most `120` nodes, and the verifier
-accepts at most `120` folds. -/
+/-- The authentication-node budget: an admissible digest's octopus has at most `118` nodes, and the verifier
+accepts at most `118` folds. -/
 def ftsAuthCapacity : Nat := 118
 /-- The verifier's segments: one per opened leaf and one per merge, `2k - 1 = 29`. -/
 def ftsSegments : Nat := 2 * ftsOpenings - 1
@@ -251,11 +251,11 @@ def tweakableHashInput (parameter : PublicParameter) (domain : HashDomain)
     (message : HashInput) : HashInput :=
   tweakBytes domain ++ bytesLE 16 parameter ++ message
 
-/-- `tweak(7, 0, 0, trial, 0) || P || S || m`. -/
+/-- One-block randomizer input. Tag `7` is reserved for randomizers; no keygen,
+    tweakable, or MAC input uses it. -/
 def randomizerHashInput (parameter : PublicParameter) (seed : MasterSeed)
     (message : Message) (trial : BitVec 32) : HashInput :=
-  fieldBytes ⟨7#8, 0#8, 0#40, trial, 0#32⟩ ++
-    bytesLE 16 parameter ++ bytesLE 32 seed ++ bytesLE 32 message
+  [1, 7] ++ bytesLE 26 (seed.extractLsb' 0 208) ++ bytesLE 32 message ++ bytesLE 4 trial
 
 inductive KeygenDomain where
   /-- The secrets of chains `2k` and `2k + 1` of a one-time key. -/
@@ -309,7 +309,7 @@ def macHashInput (parameter : PublicParameter) (seed : MasterSeed) (region : Top
 
 /-! ### The target-sum code
 
-`v = 42` chunks of `w = 3` bits, 21 in each half of the digest, one pinned bit per half, and the code is the words of digit sum `T = 182`. Two distinct words of equal sum are incomparable, which is what removes the Winternitz checksum and the reason why we need the counter. -/
+`v = 42` chunks of `w = 3` bits, 21 in each half of the digest, one pinned bit per half, and the code is the words of digit sum `T = 181`. Two distinct words of equal sum are incomparable, which is what removes the Winternitz checksum and the reason why we need the counter. -/
 
 namespace TargetSum
 
@@ -574,7 +574,7 @@ def recoverLeaves (parameter : PublicParameter) (index : Index) (values : SlotCo
         return none
 
 /-- `FtsRec`, the stack machine of `ref.pors_root`: run the `k` leaves, then accept the node as the PORS root
-if there were at most `120` folds, the node is the root (heap index `1`) and the stack is empty. -/
+if there were at most `118` folds, the node is the root (heap index `1`) and the stack is empty. -/
 def ftsRecover (parameter : PublicParameter) (index : Index) (values : SlotCode → Nat)
     (fts : FtsSignature) : m (Option Digest) := do
   let some state ← recoverLeaves parameter index values fts ftsOpenings 0 0 RecoverState.initial
@@ -633,7 +633,7 @@ def sortedLeaves (leaves : IndexGroup → FtsLeaf) : List Nat :=
   (sortedSlots leaves).map fun r => (leaves r).val
 
 /-- The signer's (and the verifier's) condition on a digest's leaf indices: pairwise distinct, and an
-octopus of at most `120` nodes. -/
+octopus of at most `118` nodes. -/
 def AdmissibleLeaves (leaves : IndexGroup → FtsLeaf) : Prop :=
   Function.Injective leaves ∧ octopusSize (sortedLeaves leaves) ≤ ftsAuthCapacity
 
@@ -757,7 +757,7 @@ instance (signature : Signature) : Decidable (CountersInRange signature) :=
   inferInstanceAs (Decidable (∀ lay, (signature.layers lay).counter.toNat < encodingAttemptLimit))
 
 /-- `Ver` after the counter check: recompute the digest, recover the PORS root with the stack machine (which
-enforces admissibility: strictly increasing leaves, at most `120` folds), walk the layers and compare with
+enforces admissibility: strictly increasing leaves, at most `118` folds), walk the layers and compare with
 the root. -/
 def verifyCore (publicKey : PublicKey) (message : Message) (signature : Signature) : m Bool := do
   let digest ← messageDigest publicKey.parameter publicKey.root message signature.randomness
@@ -1080,7 +1080,6 @@ def deriveRandomizer {m : Type → Type} [Monad m] [HasQuery HashSpec m]
   return truncateHash (← Concrete.oracleHash (randomizerHashInput parameter seed message trial))
 
 noncomputable def sampleMasterSeed : ProbComp MasterSeed :=
-  letI := SampleableType.ofFintype MasterSeed
   $ᵗ MasterSeed
 
 namespace Seeded

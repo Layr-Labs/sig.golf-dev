@@ -315,10 +315,11 @@ theorem hash16_rnd (seed : MasterSeed) (m : Message) (a : Nat) :
     Ref.hash16 (Ref.rndInput (Ref.toList (n := 32) seed) (Ref.toList (n := 32) m) a) =
       dv <$> relabel fmtQ (SphincsSecurity.deriveRandomizer (m := AComp) 0 seed m (BitVec.ofNat 32 a)) := by
   apply hash16_derive
-  simp only [SphincsSecurity.randomizerHashInput, toB_append, toB_P, toB_seed, toB_msg,
-    Ref.rndInput, Ref.thInput, List.append_assoc]
-  rw [show (⟨7#8, 0#8, 0#40, BitVec.ofNat 32 a, 0#32⟩ : SphincsSecurity.TweakFields) =
-    SphincsSecurity.tweakFields 7 0 0 a 0 from rfl, toB_tweakFields]
+  rw [SphincsSecurity.randomizerHashInput]
+  simp only [toB_append]
+  rw [toB_seedPrefix, toB_bytesLE 32 m, toB_bytesLE_ofNat 4 a]
+  simp only [Ref.rndInput]
+  rfl
 
 theorem digest_eq (root rho : Digest) (m : Message) :
     Ref.digest (dv rho) (Ref.toList (n := 32) m) =

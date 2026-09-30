@@ -450,9 +450,10 @@ theorem spec_searchCounter (lay tau e : Nat) (M : Val) (hM : M.length ≤ 16) (h
     · exact ih (c + 1)
 
 theorem rnd_ok (S m : List Byte) (hS : S.length = 32) (hm : m.length = 32) (a : Nat) :
-    PD (fmt (rndInput S m a)) ∧ (fmt (rndInput S m a)).blocks ≤ 2 := by
-  refine ⟨Or.inl ?_, blocksFmt_le _ 2 (by simp [rndInput, hS, hm]) (by omega)⟩
-  unfold rndInput; rw [qbyte_tag]
+    PD (fmt (rndInput S m a)) ∧ (fmt (rndInput S m a)).blocks ≤ 1 := by
+  refine ⟨Or.inl ?_, blocksFmt_le _ 1 (by simp [rndInput, hS, hm]) (by omega)⟩
+  rw [qbyte_fmt _ _ (by decide)]
+  simp [rndInput, byte_toNat]
 
 theorem dig_ok (rho m : List Byte) (hr : rho.length = 16) (hm : m.length = 32) :
     PD (fmt (digestInput rho m)) ∧ (fmt (digestInput rho m)).blocks ≤ 1 := by
@@ -460,7 +461,7 @@ theorem dig_ok (rho m : List Byte) (hr : rho.length = 16) (hm : m.length = 32) :
   unfold digestInput; rw [qbyte_tag]
 
 theorem spec_searchDigest (S m : List Byte) (hS : S.length = 32) (hm : m.length = 32) :
-    ∀ fuel a, Spec PD (fun _ => True) (3 * fuel) (searchDigest S m a fuel) := by
+    ∀ fuel a, Spec PD (fun _ => True) (2 * fuel) (searchDigest S m a fuel) := by
   intro fuel
   induction fuel with
   | zero => intro a; exact Spec.pure _ _ trivial
@@ -468,12 +469,12 @@ theorem spec_searchDigest (S m : List Byte) (hS : S.length = 32) (hm : m.length 
     intro a
     unfold searchDigest
     obtain ⟨h1, h2⟩ := rnd_ok S m hS hm a
-    refine spec_hash16_bind _ h1 h2 (l := 1 + 3 * n) (fun rho hrho => ?_) (by omega)
+    refine spec_hash16_bind _ h1 h2 (l := 1 + 2 * n) (fun rho hrho => ?_) (by omega)
     obtain ⟨h3, h4⟩ := dig_ok rho m hrho hm
     show Spec PD _ _ (qry (fmt (digestInput rho m)) >>= fun b => Pure.pure b.toNat
       >>= fun N => if admissible N = true then Pure.pure (some (rho, N))
         else searchDigest S m (a + 1) n)
-    refine Spec.qry_bind h3 (k := 3 * n) (fun u => ?_) (by omega)
+    refine Spec.qry_bind h3 (k := 2 * n) (fun u => ?_) (by omega)
     rw [pure_bind]
     split
     · exact Spec.pure _ _ trivial

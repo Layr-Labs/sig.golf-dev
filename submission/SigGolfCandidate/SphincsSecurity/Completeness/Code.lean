@@ -3,10 +3,10 @@ import SigGolfCandidate.SphincsSecurity.Scheme
 /-!
 # How many digests the target-sum code accepts
 
-The signer's counter search succeeds on a digest whose 42 three-bit digits sum to `T = 180` and
+The signer's counter search succeeds on a digest whose 42 three-bit digits sum to `T = 181` and
 whose two padding bits are clear, so the search's failure probability is governed by how many of
-the `2^128` digests that is. The count is the coefficient of `z^180` in `(1 + z + ... + z^7)^42`,
-about `2^116.77`: at least one digest in `codeShare = 2397`.
+the `2^128` digests that is. The count is the coefficient of `z^181` in `(1 + z + ... + z^7)^42`,
+about `2^117.002`: at least one digest in `codeShare = 2397`.
 
 Counting it is one identity and one division. Packing the polynomial into a single natural number
 in base `2^128`, which is above every coefficient, turns the product of the `42` factors into a

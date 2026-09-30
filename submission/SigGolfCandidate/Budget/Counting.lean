@@ -12,8 +12,8 @@ For a uniform answer `u : BitVec 256`:
 * the randomizer lands in a set `R` of values with probability at most `|R| / 2^128`
   (`probEvent_answerBytes_mem_le`);
 * the encoding decodes with probability exactly `codeCount / 2^128`, where
-  `codeCount = 193985008527217786439221056132190832` is the number of pairs of 21-digit octal
-  words with digit sum `targetSum` (180) (`probEvent_decode_none`). The count is a generating-function identity
+  `codeCount = 166377570312823648881394061712938016` is the number of pairs of 21-digit octal
+  words with digit sum `targetSum` (181) (`probEvent_decode_none`). The count is a generating-function identity
   evaluated by the kernel (`codeCount_eq`), as in the leanVM completeness proof.
 -/
 
@@ -241,8 +241,8 @@ theorem npair_coeff (n s X : Nat) (hX : 8 ^ n * 8 ^ n < X) (hs : s < 14 * n + 1)
   rw [← gf_pairs]
   exact (digit_of_sum X (by omega) (npair n) (fun s => (npair_le n s).trans_lt hX) _ s hs).symm
 
-/-- The number of accepted encodings (pairs of 21-digit words with digit sum `targetSum = 180`). -/
-def codeCount : Nat := 193985008527217786439221056132190832
+/-- The number of accepted encodings (pairs of 21-digit words with digit sum `targetSum = 181`). -/
+def codeCount : Nat := 166377570312823648881394061712938016
 
 theorem gfDigit_eq (X : Nat) : gfDigit X = 1 + X + X ^ 2 + X ^ 3 + X ^ 4 + X ^ 5 + X ^ 6 + X ^ 7 := by
   simp [gfDigit, Finset.sum_range_succ]

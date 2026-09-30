@@ -20,7 +20,7 @@ theorem seedOf_id_dist (seed : SphincsSecurity.MasterSeed) :
       Pr[= seed | SphincsSecurity.sampleMasterSeed] := by
   rw [id_map]
   unfold sampleSecretKey SphincsSecurity.sampleMasterSeed
-  rw [probOutput_uniformSample, probOutput_uniformSample]
+  rw [probOutput_uniformSample]
 
 section relabelCongr
 

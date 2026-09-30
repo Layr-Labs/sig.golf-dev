@@ -17,7 +17,8 @@ set_option exponentiation.threshold 1024
 
 private theorem visRangeClosing (x : ℝ) (hlow : 606208 / 2 ^ 128 ≤ x) (hhigh : x ≤ 3 / 16384) :
     7 / 4 * x + 254 * 1 / 2 ^ 16 * x + 1 / 2 ^ 700 + x ^ 2 * 2 +
-      16384 / 16381 * x * (1241 * x + 15 * (254 * x / 2 ^ 25) + 15 / 2 ^ 700) ≤ 2 * x - 2 / 2 ^ 128 := by
+      16384 / 16381 * x * (1241 * x + 15 * (254 * x / 2 ^ 25) + 15 / 2 ^ 700) +
+      x / 2 ^ 72 ≤ 2 * x - 2 / 2 ^ 128 := by
   have hn : 0 ≤ x := le_trans (by positivity) hlow
   have hsq : x * x ≤ x * (3 / 16384) := mul_le_mul_of_nonneg_left hhigh hn
   have htail : (1 : ℝ) / 2 ^ 700 ≤ x / 2 ^ 572 := by
@@ -31,8 +32,8 @@ private theorem visRangeClosing (x : ℝ) (hlow : 606208 / 2 ^ 128 ≤ x) (hhigh
   norm_num at hsq htail hsmall ⊢
   nlinarith [hsq, htail, hn, hlow, hhigh, hsmall]
 
-theorem visSmallBound_le (q : Nat) (hq : keygenHashCost ≤ q) (hsmall : q + 1 ≤ budgetSplit) :
-    visSmallBound (q + 1) ≤ (q : ENNReal) / 2 ^ 127 := by
+theorem visSmallBound_plus_le (q : Nat) (hq : keygenHashCost ≤ q) (hsmall : q + 1 ≤ budgetSplit) :
+    visSmallBound (q + 1) + ((q + 1 : Nat) : ENNReal) / 2 ^ 200 ≤ (q : ENNReal) / 2 ^ 127 := by
   rw [budgetSplit_def] at hsmall
   rw [keygenHashCost_eq] at hq
   unfold visSmallBound FtsGuessHash.nearMixedBound
@@ -70,8 +71,8 @@ theorem visSmallBound_le (q : Nat) (hq : keygenHashCost ≤ q) (hsmall : q + 1 �
     exact_mod_cast h
   have hcache : ((254 * b : Nat) : ENNReal) * certificateCacheExceptionRate ≤ ((254 * b : Nat) : ENNReal) * (2 ^ 153 : ENNReal)⁻¹ :=
     mul_le_mul' le_rfl certificateCacheExceptionRate_le
-  refine le_trans (add_le_add (add_le_add le_rfl hpair)
-    (mul_le_mul' hinv (mul_le_mul' le_rfl (mul_le_mul' le_rfl (add_le_add le_rfl (add_le_add hcache le_rfl)))))) ?_
+  refine le_trans (add_le_add (add_le_add (add_le_add le_rfl hpair)
+    (mul_le_mul' hinv (mul_le_mul' le_rfl (mul_le_mul' le_rfl (add_le_add le_rfl (add_le_add hcache le_rfl)))))) le_rfl) ?_
   apply (ENNReal.toReal_le_toReal (by finiteness) (by finiteness)).mp
   simp (disch := finiteness) only [ENNReal.toReal_add, ENNReal.toReal_mul, ENNReal.toReal_div, ENNReal.toReal_inv,
     ENNReal.toReal_pow, ENNReal.toReal_natCast, ENNReal.toReal_ofNat, ENNReal.toReal_one, Nat.cast_pow, Nat.cast_ofNat, Nat.cast_mul]
@@ -87,5 +88,9 @@ theorem visSmallBound_le (q : Nat) (hq : keygenHashCost ≤ q) (hsmall : q + 1 �
   rw [hqb]
   have h := visRangeClosing (((b : Nat) : ℝ) / 2 ^ 128) hlow hhigh
   convert h using 1 <;> ring
+
+theorem visSmallBound_le (q : Nat) (hq : keygenHashCost ≤ q) (hsmall : q + 1 ≤ budgetSplit) :
+    visSmallBound (q + 1) ≤ (q : ENNReal) / 2 ^ 127 :=
+  (le_self_add).trans (visSmallBound_plus_le q hq hsmall)
 
 end SphincsSecurity.Concrete.EventSmall

@@ -1,4 +1,5 @@
 import SigGolfCandidate.Sign.DigAn
+import SigGolfCandidate.Sign.RndTail
 
 /-!
 # `sign`, phase 1: the digest search (`dig_loop`, instructions 65 .. 141)
@@ -18,21 +19,23 @@ open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGol
 structure DigMem (S mm : List Byte) (u : MachineState) : Prop where
   rbS : u.readWords (BitVec.ofNat 64 0x640) 4 = wordsOf S
   rbM : u.readWords (BitVec.ofNat 64 0x660) 4 = wordsOf mm
-  rbZ : u.readWords (BitVec.ofNat 64 0x680) 4 = [0, 0, 0, 0]
-  rbP : u.readWords (BitVec.ofNat 64 0x628) 3 = [0, 0, 0]
-  rb0 : lo32 (u.getMem (BitVec.ofNat 64 0x620)) = BitVec.ofNat 32 0x701
+  rbPack : u.readWords (BitVec.ofNat 64 0x780) 8 =
+    rndPackWords (u.getMem (BitVec.ofNat 64 0x640)) (u.getMem (BitVec.ofNat 64 0x648))
+      (u.getMem (BitVec.ofNat 64 0x650)) (u.getMem (BitVec.ofNat 64 0x658))
+      (u.getMem (BitVec.ofNat 64 0x660)) (u.getMem (BitVec.ofNat 64 0x668))
+      (u.getMem (BitVec.ofNat 64 0x670)) (u.getMem (BitVec.ofNat 64 0x678))
   db0 : u.readWords (BitVec.ofNat 64 0x20) 2 = [twWord0 12 0 0 0, 0]
   dbM : u.readWords (BitVec.ofNat 64 0x40) 4 = wordsOf mm
 
 /-- Addresses written by the digest search. -/
-def digW (a : Nat) : Prop := a = 0x620 ∨ (0x30 ≤ a ∧ a < 0x40) ∨ (0x140 ≤ a ∧ a < 0x180) ∨ anW a
+def digW (a : Nat) : Prop := a = 0x7b8 ∨ (0x30 ≤ a ∧ a < 0x40) ∨ (0x140 ≤ a ∧ a < 0x180) ∨ anW a
 
 def digRegs : List Reg := [.x1, .x2, .x3, .x4, .x6, .x8, .x9, .x10, .x11, .x12, .x13, .x14, .x15, .x16, .x17]
 
 /-- Loop invariant at `dig_loop` with counter `a`. -/
 def DigInv (u : MachineState) (a : Nat) (t : MachineState) : Prop :=
   t.pc = pcOf 65 ∧ t.getReg .x6 = BitVec.ofNat 64 a ∧ a < 2 ^ 20 ∧ RegsEq u t digRegs ∧
-    Frame u t digW ∧ lo32 (t.getMem (BitVec.ofNat 64 0x620)) = lo32 (u.getMem (BitVec.ofNat 64 0x620))
+    Frame u t digW ∧ lo32 (t.getMem (BitVec.ofNat 64 0x7b8)) = lo32 (u.getMem (BitVec.ofNat 64 0x7b8))
 
 /-- Result of the digest search. -/
 def DigPost (u : MachineState) : Option (Val × Nat) → MachineState → Prop
@@ -57,7 +60,7 @@ theorem digTrial (sk : SecretKey) (m : Message) (u : MachineState)
     (hmem : DigMem (toList sk) (toList m) u) (hx5 : u.getReg .x5 = 0) (a : Nat) (t : MachineState)
     (hinv : DigInv u a t) (rest : OracleComp HashSpec (Option (Val × Nat))) (Wr : Nat)
     (hrest : ∀ t', t'.pc = pcOf 137 → t'.getReg .x6 = BitVec.ofNat 64 a → RegsEq u t' digRegs →
-      Frame u t' digW → lo32 (t'.getMem (BitVec.ofNat 64 0x620)) = lo32 (u.getMem (BitVec.ofNat 64 0x620)) →
+      Frame u t' digW → lo32 (t'.getMem (BitVec.ofNat 64 0x7b8)) = lo32 (u.getMem (BitVec.ofNat 64 0x7b8)) →
       Sim image t' Wr rest (DigPost u)) :
     Sim image t (35 + anCyc + Wr) (hash16 (rndInput (toList sk) (toList m) a) >>= fun rho =>
       (liftM (HashSpec.query (fmt (digestInput rho (toList m)))) : OracleComp HashSpec _) >>= fun ans =>
@@ -69,7 +72,7 @@ theorem digTrial (sk : SecretKey) (m : Message) (u : MachineState)
   -- block 27
   have hs1 := symRun_sound blk65 codeAt_65 t tpc (by simp only [blk65.res, rv_simp])
   set t1 := blk65.res.toState t with ht1
-  have f1 : Frame t t1 (fun x => x = 0x620) := by
+  have f1 : Frame t t1 (fun x => x = 0x7b8) := by
     apply frame_toState; intro x hx hW
     simp only [blk65.res, rv_simp, List.forall_mem_cons, List.not_mem_nil, IsEmpty.forall_iff,
       implies_true, and_true, ne_eq, ofNat_eq_iff]
@@ -78,39 +81,57 @@ theorem digTrial (sk : SecretKey) (m : Message) (u : MachineState)
     intro r hr; simp only [ht1, Result.toState_getReg]
     cases r <;> simp_all [blk65.res, rv_simp] <;> rfl
   have e1 : fetch image t1 = some (.base .ECALL) := symRun_ecall blk65 codeAt_65 t (by simp only [blk65.res, rv_simp]) rfl
-  have x10 : t1.getReg .x10 = BitVec.ofNat 64 0x620 := by simp only [ht1, blk65.res, rv_simp]
-  have x11 : t1.getReg .x11 = BitVec.ofNat 64 128 := by simp only [ht1, blk65.res, rv_simp]
+  have x10 : t1.getReg .x10 = BitVec.ofNat 64 0x780 := by simp only [ht1, blk65.res, rv_simp]
+  have x11 : t1.getReg .x11 = BitVec.ofNat 64 64 := by simp only [ht1, blk65.res, rv_simp]
   have x12 : t1.getReg .x12 = BitVec.ofNat 64 0x140 := by simp only [ht1, blk65.res, rv_simp]
   have x5 : t1.getReg .x5 = 0 := by rw [r1.get .x5, tregs.get .x5, hx5]
   have pc1 : t1.pc = pcOf 69 := by simp only [ht1, blk65.res, rv_simp]
-  have m620 : t1.getMem (BitVec.ofNat 64 0x620) = twWord0 7 0 0 a := by
-    rvs [ht1, blk65.res, t6]
-    refine (word_of_halves _ 0x701 a (by rw [lo32_replace1, tlo, hmem.rb0]) (by rw [hi32_replace1])).trans ?_
-    unfold twWord0; congr 1
+  let s0 := u.getMem (BitVec.ofNat 64 0x640)
+  let s1 := u.getMem (BitVec.ofNat 64 0x648)
+  let s2 := u.getMem (BitVec.ofNat 64 0x650)
+  let s3 := u.getMem (BitVec.ofNat 64 0x658)
+  let m0 := u.getMem (BitVec.ofNat 64 0x660)
+  let m1 := u.getMem (BitVec.ofNat 64 0x668)
+  let m2 := u.getMem (BitVec.ofNat 64 0x670)
+  let m3 := u.getMem (BitVec.ofNat 64 0x678)
+  have hsw : wordsOf (toList sk) = [s0, s1, s2, s3] := by
+    rw [← hmem.rbS, readWords_ofNat_succ, readWords_ofNat_succ,
+      readWords_ofNat_succ, readWords_ofNat_succ]
+    rfl
+  have hmw : wordsOf (toList m) = [m0, m1, m2, m3] := by
+    rw [← hmem.rbM, readWords_ofNat_succ, readWords_ofNat_succ,
+      readWords_ofNat_succ, readWords_ofNat_succ]
+    rfl
+  have hsbytes := eq_of_words4 (toList sk) hS s0 s1 s2 s3 hsw
+  have hmbytes := eq_of_words4 (toList m) hm m0 m1 m2 m3 hmw
+  have hpacked : wordsOf (rndInput (toList sk) (toList m) a) =
+      rndPackWordsAt s0 s1 s2 s3 m0 m1 m2 m3 a := by
+    rw [hsbytes, hmbytes]
+    exact words_rndInput_packed_at s0 s1 s2 s3 m0 m1 m2 m3 a
+  have hbaseLast : u.getMem (BitVec.ofNat 64 0x7b8) = rndW7 m3 := by
+    have h := getMem_of_readWords u 8 0x780 7 _ hmem.rbPack (by norm_num)
+    simpa [rndPackWords] using h
+  have hlast : t1.getMem (BitVec.ofNat 64 0x7b8) = rndW7a m3 a :=
+    blk65_rndW7a t m3 a t6 (by rw [tlo, hbaseLast])
+  have hpre : t1.readWords (BitVec.ofNat 64 0x780) 7 =
+      u.readWords (BitVec.ofNat 64 0x780) 7 := by
+    rw [f1.readWords _ _ (by norm_num) (by intro i hi; omega),
+      tframe.readWords _ _ (by norm_num) (by intro i hi; simp only [digW, anW]; omega)]
+  have htrial : t1.readWords (BitVec.ofNat 64 0x780) 8 =
+      rndPackWordsAt s0 s1 s2 s3 m0 m1 m2 m3 a :=
+    rndPackWords_trial u t1 s0 s1 s2 s3 m0 m1 m2 m3 a hmem.rbPack hpre hlast
   have hq1 : hashInput t1 = pad64 (rndInput (toList sk) (toList m) a) := by
     obtain ⟨hn, hw⟩ := words_rndInput _ _ hS hm a
-    refine hashInput_eq_pad64 t1 _ 1 hn (by rw [x11]) (by norm_num) (by rw [x10]; decide) ?_
-    rw [hw, x10, show 8 * (1 + 1) = 1 + 3 + 4 + 4 + 4 from rfl]
-    rw [readWords_ofNat_add, readWords_ofNat_add, readWords_ofNat_add, readWords_ofNat_add]
-    simp only [Nat.reduceMul, Nat.reduceAdd]
-    rw [readWords_ofNat_one, m620]
-    rw [f1.readWords _ _ (by norm_num) (by intro i hi; omega),
-      f1.readWords _ _ (by norm_num) (by intro i hi; omega),
-      f1.readWords _ _ (by norm_num) (by intro i hi; omega),
-      f1.readWords _ _ (by norm_num) (by intro i hi; omega),
-      tframe.readWords _ _ (by norm_num) (by intro i hi; simp only [digW, anW]; omega),
-      tframe.readWords _ _ (by norm_num) (by intro i hi; simp only [digW, anW]; omega),
-      tframe.readWords _ _ (by norm_num) (by intro i hi; simp only [digW, anW]; omega),
-      tframe.readWords _ _ (by norm_num) (by intro i hi; simp only [digW, anW]; omega),
-      hmem.rbP, hmem.rbS, hmem.rbM, hmem.rbZ]
-    simp [twWords_eq]
+    refine hashInput_eq_pad64 t1 _ 0 hn (by rw [x11]) (by norm_num) (by rw [x10]; decide) ?_
+    rw [hw, x10]
+    exact htrial.trans hpacked.symm
   have hc1 : blk65.res.cycles = 4 := rfl
   rw [hc1] at hs1
-  have hb1 : (pad64 (rndInput (toList sk) (toList m) a)).blocks = 2 := by
+  have hb1 : (pad64 (rndInput (toList sk) (toList m) a)).blocks = 1 := by
     simp [pad64, Query.blocks, (words_rndInput _ _ hS hm a).1]
   refine (Sim.steps hs1 (Sim.hash16_bind (W := 7 + (8 + (anCyc + Wr))) e1 x5
     (hashArgs_of x10 x11 x12 (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num)
-      (by norm_num)) hq1 (fmt_thInput _ _ _ _ _ _ (by decide)) (fun ans1 => ?_))).mono (by rw [hb1]; omega) (fun _ _ h => h)
+      (by norm_num)) hq1 (fmt_rndInput _ _ _) (fun ans1 => ?_))).mono (by rw [hb1]; omega) (fun _ _ h => h)
   -- after the rnd hash
   set rho := answerBytes 16 ans1 with hrho
   set t2 := writeHash t1 ans1 with ht2
@@ -182,7 +203,7 @@ theorem digTrial (sk : SecretKey) (m : Message) (u : MachineState)
     · rw [r5.get .x6 (by decide), ht4, writeHash_getReg, r3.get .x6, ht2, writeHash_getReg, r1.get .x6, t6]
     · rw [f5.getMem (by norm_num) (by simp only [anW]; omega), f4.getMem (by norm_num) (by omega),
         f3.getMem (by norm_num) (by omega), f2.getMem (by norm_num) (by omega)]
-      simp only [ht1, blk65.res, rv_simp, ite_true, lo32_replace1, Nat.reduceDiv]
+      rw [ht1, blk65_lo32]
       exact tlo
 
 theorem searchDigest_succ (S mm : List Byte) (a f : Nat) :
@@ -196,7 +217,7 @@ theorem searchDigest_succ (S mm : List Byte) (a f : Nat) :
 theorem digNext (u : MachineState) (hx7 : u.getReg .x7 = BitVec.ofNat 64 (2 ^ 20)) (a : Nat)
     (ha : a < 2 ^ 20) (t : MachineState) (tpc : t.pc = pcOf 137) (t6 : t.getReg .x6 = BitVec.ofNat 64 a)
     (tregs : RegsEq u t digRegs) (tframe : Frame u t digW)
-    (tlo : lo32 (t.getMem (BitVec.ofNat 64 0x620)) = lo32 (u.getMem (BitVec.ofNat 64 0x620))) :
+    (tlo : lo32 (t.getMem (BitVec.ofNat 64 0x7b8)) = lo32 (u.getMem (BitVec.ofNat 64 0x7b8))) :
     ∃ t', Steps image t 2 2 t' ∧
       (a + 1 < 2 ^ 20 → DigInv u (a + 1) t') ∧ (a + 1 = 2 ^ 20 → t'.pc = pcOf 139) ∧
       RegsEq t t' [.x6] := by

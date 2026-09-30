@@ -31,7 +31,7 @@ attribute [local reducible] SphincsSecurity.hashOutputBits SphincsSecurity.diges
 
 /-- The input length of each tag. -/
 def tagLen : Nat → Nat
-  | 0 => 64 | 1 => 48 | 2 => 704 | 3 => 64 | 4 => 52 | 7 => 96 | 8 => 64 | 9 => 48 | 10 => 64
+  | 0 => 64 | 1 => 48 | 2 => 704 | 3 => 64 | 4 => 52 | 7 => 64 | 8 => 64 | 9 => 48 | 10 => 64
   | 12 => 96 | 13 => 64 | 14 => 65568 | _ => 0
 
 /-- The position field (bytes `4 .. 8`, little endian) of an input. -/
@@ -564,9 +564,7 @@ theorem hq_ftsSecret (seed : MasterSeed) (index : Index) (tree : FtsTree)
 theorem hq_deriveRandomizer (seed : MasterSeed) (m : Message) (trial : BitVec 32) :
     HQ (SphincsSecurity.deriveRandomizer (m := AComp) P seed m trial) := by
   refine hq_bind (hq_oracleHash _ ?_) fun _ => hq_pure _
-  unfold SphincsSecurity.randomizerHashInput
-  rw [List.append_assoc, List.append_assoc]
-  apply honest_plain <;> simp [tagLen, length_bytesLE]
+  simp [Honest, SphincsSecurity.randomizerHashInput, tagLen, length_bytesLE]
 
 end calls
 

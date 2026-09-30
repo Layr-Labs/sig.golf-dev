@@ -98,7 +98,7 @@ def restW : Nat :=
     (11 + 15 * 345 + (20 + (4 * layCyc + topCyc + (2123 + 2))))))
 
 /-- Cycle bound of `signList`. -/
-def signW : Nat := 54 + (8 * 1025 + (10 + restW))
+def signW : Nat := 54 + (8 * 1025 + (53 + restW))
 
 theorem region_s0 (sk : SecretKey) (cache : Cache) (m : Message) :
     RegionOk (toList cache) (s0 sk cache m) := by

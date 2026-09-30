@@ -1,6 +1,7 @@
 import SigGolfCandidate.SphincsSecurity.Completeness.Search
 import SigGolfCandidate.SphincsSecurity.Completeness.Fresh
 import SigGolfCandidate.SphincsSecurity.Completeness.Uniform
+import SigGolfCandidate.SphincsSecurity.Proof.Deterministic.Inputs
 
 /-!
 # The randomizer search
@@ -35,10 +36,9 @@ theorem randInput_inj (secretKey : Seeded.SecretKey) (message : Message) {t t' :
     (ht : t < 2 ^ 32) (ht' : t' < 2 ^ 32)
     (h : randInput secretKey message t = randInput secretKey message t') : t = t' := by
   simp only [randInput, randomizerHashInput] at h
-  have hfields := SphincsSecurity.fieldBytes_injective
-    (List.append_cancel_right (List.append_cancel_right (List.append_cancel_right h)))
-  simp only [TweakFields.mk.injEq, true_and, and_true] at hfields
-  have hv := congrArg BitVec.toNat hfields
+  have htrial : BitVec.ofNat 32 t = BitVec.ofNat 32 t' :=
+    SphincsSecurity.bytesLE_injective (List.append_cancel_left h)
+  have hv := congrArg BitVec.toNat htrial
   simp only [BitVec.toNat_ofNat] at hv
   rwa [Nat.mod_eq_of_lt ht, Nat.mod_eq_of_lt ht'] at hv
 
@@ -53,17 +53,8 @@ theorem msgInput_inj (secretKey : Seeded.SecretKey) (message : Message)
 
 theorem randInput_ne_msgInput (secretKey : Seeded.SecretKey) (message : Message) (trial : Nat)
     (randomness : Randomness) :
-    randInput secretKey message trial ≠ msgInput secretKey message randomness := by
-  intro h
-  have h' : fieldBytes ⟨7#8, 0#8, 0#40, BitVec.ofNat 32 trial, 0#32⟩ ++ bytesLE 16 secretKey.parameter
-        ++ (bytesLE 32 secretKey.seed ++ bytesLE 32 message)
-      = fieldBytes (hashDomainFields .message) ++ bytesLE 16 secretKey.parameter
-        ++ messageDigestPayload secretKey.root message randomness := by
-    simpa only [randInput, msgInput, randomizerHashInput, tweakableHashInput, tweakBytes,
-      List.append_assoc] using h
-  exact fieldInput_ne_of_tag_ne secretKey.parameter
-    (fields1 := ⟨7#8, 0#8, 0#40, BitVec.ofNat 32 trial, 0#32⟩)
-    (fields2 := hashDomainFields .message) (by simp [hashDomainFields, tweakFields]) _ _ h'
+    randInput secretKey message trial ≠ msgInput secretKey message randomness :=
+  randomizerHashInput_ne_tweakableHashInput _ _ _ _ _ _ _
 
 theorem cached_run (input : HashInput) (cache : QueryCache HashSpec) (answer : HashOutput)
     (hcached : cache input = some answer) :

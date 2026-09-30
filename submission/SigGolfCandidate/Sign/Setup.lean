@@ -7,7 +7,8 @@ import SigGolfCandidate.Sign.Mac
 * block 0 (0 .. 53): `S`, `m` into the buffers, the tag (cache bytes 0 .. 32) into `x13 .. x16`,
   the in-place MAC input `tw_mac | P | S | region | 0^32` at `CACHE - 32`; HASH at 54.
 * 55 .. 62: compare the answer (`DO`) with the tag, dword by dword (`fail_mac` at 84 .. 86).
-* 63 .. 64: `LIM = 2^20`, `CNT = 0`; the digest loop starts at 65.
+* 63 .. 64: `LIM = 2^20`, then branch to the randomizer packer at 2844 .. 2886;
+  the digest loop starts at 65.
 
 `mac_sim` : the machine refines `H(macInput S region) >>= fun tag => if tag = cacheTag then rest
 else pure none`, given a simulation of `rest` from the digest loop.
@@ -49,7 +50,8 @@ def setupW (a : Nat) : Prop :=
     (0x4B00 ≤ a ∧ a < 0x4B20) ∨ (0x14B00 ≤ a ∧ a < 0x14B20)
 
 /-- Addresses written up to the digest loop (setup, the MAC answer). -/
-def macW (a : Nat) : Prop := setupW a ∨ (0x160 ≤ a ∧ a < 0x180)
+def macW (a : Nat) : Prop :=
+  setupW a ∨ (0x160 ≤ a ∧ a < 0x180) ∨ (0x780 ≤ a ∧ a < 0x7c0)
 
 /-- Facts at the start of the digest loop. -/
 structure MacOk (sk : SecretKey) (cache : Cache) (m : Message) (u : MachineState) : Prop where
@@ -124,7 +126,7 @@ theorem mac_sim (sk : SecretKey) (cache : Cache) (m : Message) {β : Type}
     (rest : OracleComp HashSpec (Option β)) (Wr : Nat) (Q : Option β → MachineState → Prop)
     (hrest : ∀ u, MacOk sk cache m u → Sim image u Wr rest Q)
     (hbad : ∀ t, t.pc = pcOf 144 → t.getReg .x5 = 1 → t.getReg .x10 = 1 → Q none t) :
-    Sim image (s0 sk cache m) (54 + (8 * 1025 + (10 + Wr)))
+    Sim image (s0 sk cache m) (54 + (8 * 1025 + (53 + Wr)))
       (H (macInput (toList sk) (cacheRegion (toList cache))) >>= fun tag =>
         if toList (n := 32) tag = cacheTag (toList cache) then rest else pure none) Q := by
   set s := s0 sk cache m with hs0
@@ -167,7 +169,7 @@ theorem mac_sim (sk : SecretKey) (cache : Cache) (m : Message) {β : Type}
     simp [pad64, Query.blocks, hn]
   have hq' : hashInput u = fmt (macInput (toList sk) (cacheRegion (toList cache))) :=
     hq.trans (fmt_thInput _ _ _ _ _ _ (by decide)).symm
-  refine (Sim.steps hs (Sim.query_bind (W := 10 + Wr) e1 x5
+  refine (Sim.steps hs (Sim.query_bind (W := 53 + Wr) e1 x5
     (hashArgs_of x10 x11 x12 (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num)
       (by norm_num)) hq' (fun a => ?_))).mono (by rw [show macInput (toList sk) (cacheRegion (toList cache)) = thInput (tweak 14 0 0 0 0) _ from rfl, blocks_fmt_th _ _ _ _ _ _ (by decide)]; rw [← show macInput (toList sk) (cacheRegion (toList cache)) = thInput (tweak 14 0 0 0 0) _ from rfl, hb]) (fun _ _ h => h)
   set t2 := writeHash u a with ht2
@@ -252,10 +254,21 @@ theorem mac_sim (sk : SecretKey) (cache : Cache) (m : Message) {β : Type}
     intro q h1 h6 h7
     rw [r7.get q (by simp [h6, h7]), r6.get q (by simp [h1]), r5.get q (by simp [h1]),
       r4.get q (by simp [h1]), r3.get q (by simp [h1]), r2]
+  have pc7 : t7.pc = pcOf 2844 := by simp only [ht7, blk63.res, rv_simp]
+  have hs8 := symRun_sound blk2844 codeAt_2844 t7 pc7 (by simp only [blk2844.res, rv_simp])
+  rw [blk2844_cycles] at hs8
+  set t8 := blk2844.res.toState t7 with ht8
+  have f8 : Frame t7 t8 (fun a => 0x780 ≤ a ∧ a < 0x7c0) := blk2844_frame t7
+  have r8 := blk2844_regs t7
   have fr : Frame s t7 macW := by
     intro x hx hW
     rw [n7, f2.getMem hx (by simp only [macW, setupW] at hW; omega),
       f.getMem hx (by simp only [macW, setupW] at hW ⊢; omega)]
+  have fr8 : Frame s t8 macW := (fr.trans f8).mono (by
+    intro a ha
+    rcases ha with h | h
+    · exact h
+    · exact Or.inr (Or.inr h))
   have fu : ∀ a n, a + 8 * n < 2 ^ 64 → (∀ i < n, ¬ macW (a + 8 * i)) →
       t7.readWords (BitVec.ofNat 64 a) n = s.readWords (BitVec.ofNat 64 a) n :=
     fun a n h1 h2 => fr.readWords a n h1 h2
@@ -275,24 +288,31 @@ theorem mac_sim (sk : SecretKey) (cache : Cache) (m : Message) {β : Type}
         ih (a + 8) (by omega) (by omega)
           (fun i hi => by rw [show a + 8 + 8 * i = a + 8 * (i + 1) by ring]; exact hout _ (by omega))]
       rfl
-  have ok : MacOk sk cache m t7 := by
-    refine ⟨by simp only [ht7, blk63.res, rv_simp], ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, ?_, ?_, ?_, fr⟩
-    · rw [fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_rbS, s0_readWords_sk]
-    · rw [fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_rbM, s0_readWords_msg]
-    · rw [fu _ _ (by norm_num) (by intro i hi; simp only [macW, setupW]; omega),
-        hz _ _ (by norm_num) (by norm_num) (by intro i hi; omega)]; rfl
-    · rw [fu _ _ (by norm_num) (by intro i hi; simp only [macW, setupW]; omega),
-        hz _ _ (by norm_num) (by norm_num) (by intro i hi; omega)]; rfl
-    · rw [n7, f2.getMem (by norm_num) (by omega), hu, blk0_rb0]
-    · rw [readWords_ofNat_succ, n7, f2.getMem (by norm_num) (by omega), hu, blk0_db0,
+  have ok : MacOk sk cache m t8 := by
+    refine ⟨blk2844_pc t7, ⟨?_, ?_, ?_, ?_, ?_⟩, ?_, ?_, ?_, ?_, fr8⟩
+    · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
+        fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_rbS, s0_readWords_sk]
+    · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
+        fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_rbM, s0_readWords_msg]
+    · have hw := blk2844_words t7
+      rw [← ht8] at hw
+      rw [hw]
+      rw [f8.getMem (by norm_num) (by omega), f8.getMem (by norm_num) (by omega),
+        f8.getMem (by norm_num) (by omega), f8.getMem (by norm_num) (by omega),
+        f8.getMem (by norm_num) (by omega), f8.getMem (by norm_num) (by omega),
+        f8.getMem (by norm_num) (by omega), f8.getMem (by norm_num) (by omega)]
+    · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega), readWords_ofNat_succ,
+        n7, f2.getMem (by norm_num) (by omega), hu, blk0_db0,
         fu _ _ (by norm_num) (by intro i hi; simp only [macW, setupW]; omega),
         hz _ _ (by norm_num) (by norm_num) (by intro i hi; omega)]; rfl
-    · rw [fu _ _ (by norm_num) (by intro i hi; simp only [macW, setupW]; omega), s0_readWords_msg]
-    · rw [g7 .x5 (by decide) (by decide) (by decide), x5]
-    · simp only [ht7, blk63.res, rv_simp]
-    · simp only [ht7, blk63.res, rv_simp]; rfl
-    · rw [fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_pbS, s0_readWords_sk]
+    · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
+        fu _ _ (by norm_num) (by intro i hi; simp only [macW, setupW]; omega), s0_readWords_msg]
+    · rw [r8.get .x5, g7 .x5 (by decide) (by decide) (by decide), x5]
+    · exact blk2844_x6 t7
+    · rw [r8.get .x7]; simp only [ht7, blk63.res, rv_simp]; rfl
+    · rw [f8.readWords _ _ (by norm_num) (by intro i hi; omega),
+        fu7 _ _ (by norm_num) (by intro i hi; omega), hu, blk0_pbS, s0_readWords_sk]
   exact (Sim.steps hs3 (Sim.steps hs4 (Sim.steps hs5 (Sim.steps hs6 (Sim.steps hs7
-    (hrest t7 ok)))))).mono (by omega) (fun _ _ h => h)
+    (Sim.steps hs8 (hrest t8 ok))))))).mono (by omega) (fun _ _ h => h)
 
 end SigGolfCandidate.Sign

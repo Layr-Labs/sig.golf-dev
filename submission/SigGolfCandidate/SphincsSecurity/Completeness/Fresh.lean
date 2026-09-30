@@ -1,6 +1,7 @@
 import SigGolfCandidate.SphincsSecurity.Proof.Scheme.Support
 import SigGolfCandidate.SphincsSecurity.Proof.Scheme.Bytes
 import SigGolfCandidate.SphincsSecurity.Proof.Seeded.KeyDerivation
+import SigGolfCandidate.SphincsSecurity.Proof.Deterministic.Inputs
 
 /-!
 # Inputs a computation leaves alone
@@ -486,7 +487,8 @@ theorem encodingInput_ne_of_layer_ne (parameter : PublicParameter) {lay lay' : L
   obtain ⟨hprefix, _⟩ := List.append_inj h (by simp [tweakBytes_length, bytesLE_length])
   obtain ⟨htweak, _⟩ := List.append_inj' hprefix (by simp [bytesLE_length])
   have hfields := SphincsSecurity.tweakBytes_eq_iff.mp htweak
-  simp only [hashDomainFields, tweakFields, TweakFields.mk.injEq] at hfields
+  dsimp [hashDomainFields, tweakFields] at hfields
+  simp only [TweakFields.mk.injEq] at hfields
   have hv := congrArg BitVec.toNat hfields.2.1
   simp only [BitVec.toNat_ofNat] at hv
   have hl : lay.val < 2 ^ 8 := by have := lay.isLt; simp only [numLayers] at this; omega
@@ -522,18 +524,18 @@ theorem structural_encoding (parameter : PublicParameter) (seed : MasterSeed) (l
     (tree' : TreeIndex) (leaf' : LeafIndex) (payload' : HashInput) :
     Structural parameter seed (tweakableHashInput parameter (.encoding lay' tree' leaf') payload') where
   chain _ _ _ _ _ _ := tweakableHashInput_ne_of_tag_ne parameter
-    (by simp [hashDomainFields, tweakFields]) _ _
+    (by dsimp [hashDomainFields, tweakFields]; decide) _ _
   leafHash _ _ _ _ := tweakableHashInput_ne_of_tag_ne parameter
-    (by simp [hashDomainFields, tweakFields]) _ _
+    (by dsimp [hashDomainFields, tweakFields]; decide) _ _
   node _ _ _ _ _ := tweakableHashInput_ne_of_tag_ne parameter
-    (by simp [hashDomainFields, tweakFields]) _ _
+    (by dsimp [hashDomainFields, tweakFields]; decide) _ _
   ftsLeaf _ _ _ _ := tweakableHashInput_ne_of_tag_ne parameter
-    (by simp [hashDomainFields, tweakFields]) _ _
+    (by dsimp [hashDomainFields, tweakFields]; decide) _ _
   ftsNodeHash _ _ _ _ := tweakableHashInput_ne_of_tag_ne parameter
-    (by simp [hashDomainFields, tweakFields]) _ _
+    (by dsimp [hashDomainFields, tweakFields]; decide) _ _
   msg _ := tweakableHashInput_ne_of_tag_ne parameter
-    (by simp [hashDomainFields, tweakFields]) _ _
-  randomizer _ _ := fieldInput_ne_of_tag_ne parameter (by simp [hashDomainFields, tweakFields]) _ _
+    (by dsimp [hashDomainFields, tweakFields]; decide) _ _
+  randomizer _ _ := randomizerHashInput_ne_tweakableHashInput _ _ _ _ _ _ _
   derive _ := keygenHashInput_ne_tweakableHashInput parameter parameter _ _ seed _
 
 /-! ## What the bundle gives

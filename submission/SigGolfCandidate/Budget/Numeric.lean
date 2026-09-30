@@ -4,12 +4,12 @@ import Mathlib.Analysis.Complex.ExponentialBounds
 /-!
 # Budget: the numbers
 
-With `z = 2 ^ (1 / 2^17)`, the digest search is bounded by `bD = 1.0352` (3 compressions per
-trial, exact acceptance probability `p = 15! * Nadm / 2^210 ≈ 1/869.22`; minimal admissible
-value 1.013983) and each counter search by `bC = 1.0094` (target sum 180, acceptance
-`codeCount / 2^128 ≈ 2^-11.2265`; minimal 1.012834); the deterministic part is
-`2 ^ (115440 / 2^17) ≈ 1.8410` (MAC 1025 + PORS tree 40959 + layers 1..4 73244 + top layer 212),
-and `1.8410 * 1.0352 * 1.0094^5 ≈ 1.99010 ≤ 2` (analytic value 1.99001) (`V_signRef_le_two`).
+With `z = 2 ^ (1 / 2^17)`, the one-block digest search is bounded by `bD = 1.0232` (2
+compressions per trial, exact acceptance probability `p = 15! * Nadm / 2^210 ≈ 1/2141.484`)
+and each counter search by `bC = 1.011` (target sum 181, acceptance
+`codeCount / 2^128 ≈ 1/2045.24`). The deterministic part is
+`2 ^ (115441 / 2^17)` (MAC 1025 + PORS tree 40959 + layers 1..4 73244 + top layer 213),
+and `2 ^ (115441 / 2^17) * 1.0232 * 1.011^5 ≈ 1.98997 ≤ 2` (`V_signRef_le_two`).
 Keygen: `z_K ^ 674814 ≤ 2` with
 `z_K = 2 ^ (1 / 2^20)` (`V_keygenRef_le_two`).
 
@@ -105,10 +105,10 @@ theorem epsD_eq : epsD = ENNReal.ofReal (1 / 2 ^ 108) := by
 
 /-! ## The step conditions -/
 
-/-- The digest-search bound. -/
-noncomputable def bD : ℝ≥0∞ := ENNReal.ofReal 1.0352
+/-- The one-block digest-search bound. -/
+noncomputable def bD : ℝ≥0∞ := ENNReal.ofReal 1.0232
 /-- The counter-search bound. -/
-noncomputable def bC : ℝ≥0∞ := ENNReal.ofReal 1.0094
+noncomputable def bC : ℝ≥0∞ := ENNReal.ofReal 1.011
 
 theorem zS_le : zOf (2 ^ 17) ≤ ENNReal.ofReal (1 / (1 - 0.6931471808 / 131072)) := by
   unfold zOf
@@ -116,25 +116,25 @@ theorem zS_le : zOf (2 ^ 17) ≤ ENNReal.ofReal (1 / (1 - 0.6931471808 / 131072)
   have := rpow_two_inv_le (2 ^ 17) (by norm_num)
   simpa using this
 
-theorem stepD : zOf (2 ^ 17) ^ 3 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD := by
+theorem stepD : zOf (2 ^ 17) ^ 2 * ((epsD + rhoD) * bD + (1 - rhoD)) ≤ bD := by
   have hp0 : 0 ≤ (admTuples : ℝ) / 2 ^ 210 := by positivity
   have hp1 : (admTuples : ℝ) / 2 ^ 210 ≤ 1 := by
     rw [div_le_one (by positivity)]; unfold admTuples; norm_num
   rw [rhoD_eq, epsD_eq, one_sub_ofReal _ (by linarith), bD]
   set zb : ℝ := 1 / (1 - 0.6931471808 / 131072)
-  calc zOf (2 ^ 17) ^ 3 * ((ENNReal.ofReal (1 / 2 ^ 108) +
-        ENNReal.ofReal (1 - (admTuples : ℝ) / 2 ^ 210)) * ENNReal.ofReal 1.0352 +
+  calc zOf (2 ^ 17) ^ 2 * ((ENNReal.ofReal (1 / 2 ^ 108) +
+        ENNReal.ofReal (1 - (admTuples : ℝ) / 2 ^ 210)) * ENNReal.ofReal 1.0232 +
         ENNReal.ofReal (1 - (1 - (admTuples : ℝ) / 2 ^ 210)))
-      ≤ ENNReal.ofReal zb ^ 3 * ((ENNReal.ofReal (1 / 2 ^ 108) +
-        ENNReal.ofReal (1 - (admTuples : ℝ) / 2 ^ 210)) * ENNReal.ofReal 1.0352 +
+      ≤ ENNReal.ofReal zb ^ 2 * ((ENNReal.ofReal (1 / 2 ^ 108) +
+        ENNReal.ofReal (1 - (admTuples : ℝ) / 2 ^ 210)) * ENNReal.ofReal 1.0232 +
         ENNReal.ofReal (1 - (1 - (admTuples : ℝ) / 2 ^ 210))) := by
         gcongr; exact zS_le
-    _ = ENNReal.ofReal (zb ^ 3 * ((1 / 2 ^ 108 + (1 - (admTuples : ℝ) / 2 ^ 210)) * 1.0352 +
+    _ = ENNReal.ofReal (zb ^ 2 * ((1 / 2 ^ 108 + (1 - (admTuples : ℝ) / 2 ^ 210)) * 1.0232 +
           (1 - (1 - (admTuples : ℝ) / 2 ^ 210)))) := by
         rw [← ENNReal.ofReal_add (by norm_num) (by linarith),
           ← ENNReal.ofReal_mul (by linarith), ← ENNReal.ofReal_add (by positivity) (by linarith),
           ← ENNReal.ofReal_pow (by norm_num [zb]), ← ENNReal.ofReal_mul (by norm_num [zb])]
-    _ ≤ ENNReal.ofReal 1.0352 := by
+    _ ≤ ENNReal.ofReal 1.0232 := by
         refine ENNReal.ofReal_le_ofReal ?_
         unfold admTuples
         norm_num [zb]
@@ -145,16 +145,16 @@ theorem stepC : zOf (2 ^ 17) * (rhoC * bC + (1 - rhoC)) ≤ bC := by
     rw [div_le_one (by positivity)]; unfold codeCount; norm_num
   rw [rhoC_eq, one_sub_ofReal _ (by linarith), bC]
   set zb : ℝ := 1 / (1 - 0.6931471808 / 131072)
-  calc zOf (2 ^ 17) * (ENNReal.ofReal (1 - (codeCount : ℝ) / 2 ^ 128) * ENNReal.ofReal 1.0094 +
+  calc zOf (2 ^ 17) * (ENNReal.ofReal (1 - (codeCount : ℝ) / 2 ^ 128) * ENNReal.ofReal 1.011 +
         ENNReal.ofReal (1 - (1 - (codeCount : ℝ) / 2 ^ 128)))
       ≤ ENNReal.ofReal zb * (ENNReal.ofReal (1 - (codeCount : ℝ) / 2 ^ 128) *
-        ENNReal.ofReal 1.0094 + ENNReal.ofReal (1 - (1 - (codeCount : ℝ) / 2 ^ 128))) := by
+        ENNReal.ofReal 1.011 + ENNReal.ofReal (1 - (1 - (codeCount : ℝ) / 2 ^ 128))) := by
         gcongr; exact zS_le
-    _ = ENNReal.ofReal (zb * ((1 - (codeCount : ℝ) / 2 ^ 128) * 1.0094 +
+    _ = ENNReal.ofReal (zb * ((1 - (codeCount : ℝ) / 2 ^ 128) * 1.011 +
           (1 - (1 - (codeCount : ℝ) / 2 ^ 128)))) := by
         rw [← ENNReal.ofReal_mul (by linarith), ← ENNReal.ofReal_add (by positivity) (by linarith),
           ← ENNReal.ofReal_mul (by norm_num [zb])]
-    _ ≤ ENNReal.ofReal 1.0094 := by
+    _ ≤ ENNReal.ofReal 1.011 := by
         refine ENNReal.ofReal_le_ofReal ?_
         unfold codeCount
         norm_num [zb]
@@ -164,20 +164,20 @@ theorem stepC : zOf (2 ^ 17) * (rhoC * bC + (1 - rhoC)) ≤ bC := by
 theorem final_sign :
     zOf (2 ^ 17) ^ 1025 * signBound (zOf (2 ^ 17)) bD bC ≤ 2 := by
   have e : zOf (2 ^ 17) ^ 1025 * signBound (zOf (2 ^ 17)) bD bC =
-      bD * bC ^ 5 * zOf (2 ^ 17) ^ 115440 := by
-    rw [show 115440 = 1025 + (40959 + (73244 + 212)) by norm_num, pow_add, pow_add]
+      bD * bC ^ 5 * zOf (2 ^ 17) ^ 115441 := by
+    rw [show 115441 = 1025 + (40959 + (73244 + 213)) by norm_num, pow_add, pow_add]
     simp only [signBound]; ring
   rw [e, zOf_pow, bD, bC, ← ENNReal.ofReal_pow (by norm_num),
     ← ENNReal.ofReal_mul (by norm_num), ← ENNReal.ofReal_mul (by norm_num),
     show (2 : ℝ≥0∞) = ENNReal.ofReal 2 by simp]
   refine ENNReal.ofReal_le_ofReal ?_
-  have hsplit : (2 : ℝ) ^ (((115440 : Nat) : ℝ) / ((2 ^ 17 : Nat) : ℝ)) =
-      2 / (2 : ℝ) ^ ((15632 : ℝ) / 131072) := by
+  have hsplit : (2 : ℝ) ^ (((115441 : Nat) : ℝ) / ((2 ^ 17 : Nat) : ℝ)) =
+      2 / (2 : ℝ) ^ ((15631 : ℝ) / 131072) := by
     rw [_root_.eq_div_iff (by positivity), ← Real.rpow_add (by norm_num)]
     norm_num
   rw [hsplit]
-  have hlow := rpow_two_ge (15632 / 131072) (by norm_num)
-  have hpos : 0 < (2 : ℝ) ^ ((15632 : ℝ) / 131072) := Real.rpow_pos_of_pos (by norm_num) _
+  have hlow := rpow_two_ge (15631 / 131072) (by norm_num)
+  have hpos : 0 < (2 : ℝ) ^ ((15631 : ℝ) / 131072) := Real.rpow_pos_of_pos (by norm_num) _
   rw [mul_div_assoc', div_le_iff₀ hpos]
   nlinarith
 

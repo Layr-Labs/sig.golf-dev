@@ -73,7 +73,7 @@ def slice (l : List Byte) (off len : Nat) : List Byte := (l.drop off).take len
 
 def nChains : Nat := 42
 /-- The WOTS target sum (the 42 3-bit digits of an accepted encoding sum to it). -/
-def targetSum : Nat := 180
+def targetSum : Nat := 181
 /-- Old name of `targetSum`. -/
 abbrev target : Nat := targetSum
 /-- The number of hypertree layers `d`. -/
@@ -265,8 +265,9 @@ def nodeInput (lay tau lam j : Nat) (l r : Val) : List Byte :=
 def encInput (lay tau e : Nat) (M : Val) (c : Nat) : List Byte :=
   thInput (tweak 4 lay tau 0 e) (M ++ le32 c)
 
-/-- Randomizer trial `a`: `tw(7, 0, 0, a, 0) || P || S || m` (96 bytes). -/
-def rndInput (S m : List Byte) (a : Nat) : List Byte := thInput (tweak 7 0 0 a 0) (S ++ m)
+/-- One-block randomizer trial: domain bytes `1,7`, 26 secret bytes, the message and `LE32 a`. -/
+def rndInput (S m : List Byte) (a : Nat) : List Byte :=
+  [byte 1, byte 7] ++ S.take 26 ++ m ++ le32 a
 
 /-- PORS secrets of leaf pair `q` (leaves `2q`, `2q+1`): `tw(8, 0, idx, 0, q) || P || S`
 (64 bytes; queried with `prf2`). -/
@@ -311,7 +312,7 @@ def bitLen (x : Nat) : Nat := if x = 0 then 0 else Nat.log2 x + 1
 
 /-- `ref.octopus_size vs = 14 + sum_{s ≥ 1} bitlen(vs[s-1] xor vs[s]) - 2 (|vs| - 1)`, written as
 `14 + 2 + sum - 2 |vs|` (equal whenever Python's value is `≥ 0`, which it always is on sorted
-distinct lists; the Nat truncation to `0` does not change any comparison `≤ 120` either). -/
+distinct lists; the Nat truncation to `0` does not change any comparison `≤ 118` either). -/
 def octopusSize (vs : List Nat) : Nat :=
   porsH + 2 + (List.zipWith (fun a b => bitLen (a ^^^ b)) vs vs.tail).sum - 2 * vs.length
 
@@ -319,7 +320,7 @@ def octopusSize (vs : List Nat) : Nat :=
 def sortLeaves (v : List Nat) : List Nat := v.insertionSort (· ≤ ·)
 
 /-- `ref.admissible`: the 15 leaf indices of `N` are pairwise distinct and their octopus (in
-sorted order) has at most `porsM = 120` nodes. -/
+sorted order) has at most `porsM = 118` nodes. -/
 def admissible (N : Nat) : Bool :=
   decide (leavesOf N).Nodup && decide (octopusSize (sortLeaves (leavesOf N)) ≤ porsM)
 
