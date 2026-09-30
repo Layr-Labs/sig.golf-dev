@@ -84,11 +84,11 @@ def Final (res : Option (List Byte)) (t : MachineState) : Prop :=
     | none => t.getReg .x10 ≠ 0
     | some w => t.getReg .x10 = 0 ∧ ∀ i < 6348, t.getByte (BitVec.ofNat 64 (0x800 + i)) = w.getD i 0
 
-/-- The `fail` stub (instructions 284 .. 286). -/
-theorem run_fail (s : MachineState) (hpc : s.pc = pcOf 284) : Run s 2 (Final none) := by
-  have hst := symRun_sound blk284 codeAt_284 s hpc (by simp only [blk284.res, rv_simp])
-  refine Run.of hst (le_refl _) ⟨symRun_ecall blk284 codeAt_284 s (by simp only [blk284.res, rv_simp]) rfl,
-    by simp only [blk284.res, rv_simp], ?_⟩
-  simp only [blk284.res, rv_simp]; decide
+/-- The `fail` stub (instructions 263 .. 265). -/
+theorem run_fail (s : MachineState) (hpc : s.pc = pcOf 263) : Run s 2 (Final none) := by
+  have hst := symRun_sound blk263 codeAt_263 s hpc (by simp only [blk263.res, rv_simp])
+  refine Run.of hst (le_refl _) ⟨symRun_ecall blk263 codeAt_263 s (by simp only [blk263.res, rv_simp]) rfl,
+    by simp only [blk263.res, rv_simp], ?_⟩
+  simp only [blk263.res, rv_simp]; decide
 
 end SigGolfCandidate.Expand

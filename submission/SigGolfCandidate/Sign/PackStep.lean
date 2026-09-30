@@ -20,13 +20,14 @@ namespace SigGolfCandidate.Sign
 open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Mem
 
 /-- Destination of the pack: `SIG + 2480`. -/
-abbrev packD : Nat := 0x3300 + 2144
+abbrev packD : Nat := 0x3300 + 2176
 
-/-- All sources lie below the signature buffer (checked by the kernel). -/
-theorem packTab_src_ok : packTab.all (fun e => decide (e.2.1 < 0x3300 ∧ e.2.2 < 0x3300)) = true := by
+/-- All sources lie below the signature buffer (checked by the kernel). `+ 3424` covers the
+highest staging counter word (`STG + 3424`) read by the trailer entries (kinds 3, 4). -/
+theorem packTab_src_ok : packTab.all (fun e => decide (e.2.1 + 3424 < 0x3300 ∧ e.2.2 < 0x3300)) = true := by
   decide +kernel
 
-theorem packTab_src (e : Nat × Nat × Nat) (he : e ∈ packTab) : e.2.1 < 0x3300 ∧ e.2.2 < 0x3300 := by
+theorem packTab_src (e : Nat × Nat × Nat) (he : e ∈ packTab) : e.2.1 + 3424 < 0x3300 ∧ e.2.2 < 0x3300 := by
   have := List.all_eq_true.mp packTab_src_ok e he
   simpa using this
 
@@ -75,20 +76,22 @@ theorem packDW_frame {t u : MachineState} {W : Nat → Prop} (h : Frame t u W)
   obtain ⟨h1, h2⟩ := packTab_src e he
   obtain ⟨k, lo, hi⟩ := e
   simp only at h1 h2
-  have g1 := getMem_align_frame h lo (by omega) (hW _ (by omega))
-  have g2 := getMem_align_frame h hi (by omega) (hW _ (by omega))
-  rcases k with _ | _ | k
-  · have : alignToDword (BitVec.ofNat 64 lo) = BitVec.ofNat 64 (lo / 8 * 8) := by
-      apply BitVec.eq_of_toNat_eq
-      rw [alignToDword_toNat, BitVec.toNat_ofNat, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (a := lo) (by omega),
-        Nat.mod_eq_of_lt (a := lo / 8 * 8) (by omega)]
-      omega
-    simp only [packDW]
-    by_cases h8 : lo % 8 = 0
-    · rw [show lo = lo / 8 * 8 by omega]; exact h.getMem (by omega) (hW _ (by omega))
-    · exact h.getMem (by omega) (hW _ (by omega))
-  · simp only [packDW, g1, g2]
-  · simp only [packDW, g1]
+  have gc : ∀ a, a ≤ lo + 3424 → ctrW u a = ctrW t a := by
+    intro a ha
+    have hframe := getMem_align_frame h a (by omega) (hW _ (by omega))
+    simp only [ctrW, hframe]
+  have g0 : u.getMem (BitVec.ofNat 64 lo) = t.getMem (BitVec.ofNat 64 lo) :=
+    h.getMem (by omega) (hW _ (by omega))
+  rcases k with _ | _ | _ | _ | k
+  · simp only [packDW, g0]
+  · simp only [packDW, g0]
+  · simp only [packDW, g0]
+  · simp only [packDW]
+    rw [gc lo (by omega), gc (lo + 856) (by omega), gc (lo + 1712) (by omega)]
+  · rcases k with _ | k
+    · simp only [packDW]
+      rw [gc (lo + 1712) (by omega), gc (lo + 2568) (by omega), gc (lo + 3424) (by omega)]
+    · simp only [packDW, g0]
 
 theorem PackStep.comp {a b d f c c' n n' : Nat} (h1 : PackStep a b f c n)
     (h2 : PackStep b d (f + c) c' n') (hb : packD + 8 * (f + c + c') < 2 ^ 64) :

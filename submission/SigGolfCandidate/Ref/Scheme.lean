@@ -146,7 +146,7 @@ def buildPorsTree (S : List Byte) (idx : Nat) :
   let levels ← buildAllLevels (porsNodeFmt idx) porsH leaves
   pure (levels, secrets)
 
-/-- The FTS part of the signature (133 items of 16 bytes): the secrets of the sorted leaves
+/-- The FTS part of the signature (135 items of 16 bytes): the secrets of the sorted leaves
 `vs`, the authentication nodes `levels[h][j]` in schedule read order, zero items up to
 `porsK + porsM`. -/
 def porsOpening (vs : List Nat) (levels : List (List Val)) (secrets : List Val) : List Val :=
@@ -212,10 +212,21 @@ def signLayers (S cache : List Byte) (idx : Nat) :
       | none => pure none
       | some rest => pure (some (rest ++ [(c, vals, path)]))
 
-/-- Signature bytes: `rho | FTS items (133 × 16) | (LE32 c, vals, path)_{lay=0..4}`. -/
+/-- Bytes of the counter trailer: five counters `< 2^22` pack into `5 × 22 = 110` bits. -/
+def trailerBytes : Nat := 14
+
+/-- The 110-bit little-endian packing of the counters `c0 .. c4` (each taken mod `2^22`):
+`c0 + c1·2^22 + c2·2^44 + c3·2^66 + c4·2^88`. -/
+def packCounters (cs : List Nat) : Nat :=
+  cs.foldr (fun c acc => c % 2 ^ 22 + 2 ^ 22 * acc) 0
+
+/-- Signature bytes: `rho | FTS items (135 × 16) | (vals, path)_{lay=0..4} | counter trailer`.
+The five counters are bit-packed into a 14-byte trailer (110 bits) instead of five inline
+`LE32`s, saving 6 bytes; the top 2 bits of the trailer are zero. -/
 def serialize (rho : Val) (fts : List Val) (lays : List LayerSig) : List Byte :=
   rho ++ fts.flatten ++
-    (lays.map fun l => le32 l.1 ++ l.2.1.flatten ++ l.2.2.flatten).flatten
+    (lays.map fun l => l.2.1.flatten ++ l.2.2.flatten).flatten ++
+    leBytes trailerBytes (packCounters (lays.map fun l => l.1))
 
 /-- `ref.sign`: the MAC check of the cache (one query; `none` on a mismatch), the digest search,
 the PORS tree of `idx` (its root is the message of the bottom layer), the layers `4 .. 0`. -/
@@ -234,37 +245,43 @@ def signList (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) 
   else pure none
 
 def signRef (sk : Bytes 32) (cache : Cache) (m : Bytes 32) :
-    OracleComp HashSpec (Option (Bytes 6068)) := do
+    OracleComp HashSpec (Option (Bytes 6094)) := do
   let r ← signList (toList sk) (toList cache) (toList m)
-  pure (r.map (ofList 6068))
+  pure (r.map (ofList 6094))
 
 /-! ## Signature and witness layout -/
 
-/-- Bytes of layer `lay` in the signature: `LE32 c`, 42 chain values, `h_lay` siblings. -/
-def sigLayerBytes (lay : Nat) : Nat := 4 + 16 * nChains + 16 * height lay
-/-- Bytes before the layers (`ref.LAYER0`): `rho` and the 133 FTS items (2144). -/
+/-- Bytes of layer `lay` in the signature: 42 chain values, `h_lay` siblings (the counter is
+no longer inline; it lives in the trailer). -/
+def sigLayerBytes (lay : Nat) : Nat := 16 * nChains + 16 * height lay
+/-- Bytes before the layers (`ref.LAYER0`): `rho` and the 135 FTS items (2176). -/
 def headBytes : Nat := 16 + 16 * (porsK + porsM)
 /-- Offset of layer `lay` in the signature (`ref.sig_layer_offset`). -/
 def sigLayerOff (lay : Nat) : Nat := headBytes + ((List.range lay).map sigLayerBytes).sum
+/-- Offset of the counter trailer (`ref.SIG_TRAILER = 6080`). -/
+def sigTrailerOff : Nat := sigLayerOff nLayers
 
-/-- Signature fields (`ref.parse`): `rho`, FTS item `i < 133` (secrets `i < 15`, then auth slots). -/
+/-- Signature fields (`ref.parse`): `rho`, FTS item `i < 135` (secrets `i < 15`, then auth slots). -/
 def sigRho (sig : List Byte) : Val := slice sig 0 16
 def sigItem (sig : List Byte) (i : Nat) : Val := slice sig (16 + 16 * i) 16
 def sigAuth (sig : List Byte) (i : Nat) : Val := sigItem sig (porsK + i)
-/-- The counter bytes and the body (chain values, path) of layer `lay` in the signature. -/
-def sigCounterBytes (sig : List Byte) (lay : Nat) : List Byte := slice sig (sigLayerOff lay) 4
+/-- The counter of layer `lay`, unpacked from the trailer:
+`c_lay = (trailer / 2^(22·lay)) mod 2^22`, re-encoded as `LE32` (the witness keeps `LE32`). -/
+def sigCounterBytes (sig : List Byte) (lay : Nat) : List Byte :=
+  le32 ((leNat (slice sig sigTrailerOff trailerBytes) / 2 ^ (22 * lay)) % 2 ^ 22)
+/-- The body (chain values, path) of layer `lay` in the signature. -/
 def sigLayerBody (sig : List Byte) (lay : Nat) : List Byte :=
-  slice sig (sigLayerOff lay + 4) (sigLayerBytes lay - 4)
+  slice sig (sigLayerOff lay) (sigLayerBytes lay)
 
 /-- Witness offsets: `pi` (`W_PI`), sorted secrets (`W_SEC`), segment stream (`W_STREAM`), its
 size (`STREAM_BYTES = 8 * 29 + 16 * 120`), layer bodies (`W_LAYERS`). -/
 def wPi : Nat := 16
 def wSec : Nat := 32
 def wStream : Nat := wSec + 16 * porsK
-def streamBytes : Nat := 8 * porsSegs + 16 * 120
+def streamBytes : Nat := 8 * porsSegs + 16 * porsM
 def wLayers : Nat := wStream + streamBytes
 /-- Offset of layer `lay`'s body (chain values, path) in the witness (`ref.wit_layer_offset`). -/
-def witLayerOff (lay : Nat) : Nat := wLayers + ((List.range lay).map fun l => sigLayerBytes l - 4).sum
+def witLayerOff (lay : Nat) : Nat := wLayers + ((List.range lay).map fun l => sigLayerBytes l).sum
 /-- Offset of the counters in the witness (`ref.WIT_COUNTERS = 6328`). -/
 def witCounters : Nat := witLayerOff nLayers
 
@@ -293,11 +310,13 @@ def witnessList (sig : List Byte) (v vs segs : List Nat) : List Byte :=
     ((List.range nLayers).map (sigCounterBytes sig)).flatten
 
 /-- The part of `ref.expand` after the digest query (no queries): `none` unless the 15 leaf
-indices of `N` are distinct, their octopus has `≤ 118` nodes and the unused auth slots
-`n .. 117` (`n` = the octopus size = the number of reads) are zero; else the witness. -/
+indices of `N` are distinct, their octopus has `≤ 120` nodes and the unused auth slots
+`n .. 119` (`n` = the octopus size = the number of reads) are zero; else the witness. -/
 def expandOf (sig : List Byte) (N : Nat) : Option (List Byte) :=
   let v := leavesOf N
   if !decide v.Nodup then none
+  else if 2 ^ 110 ≤ leNat (slice sig sigTrailerOff trailerBytes) then none
+    -- the trailer's 2 spare bits must be zero (else a bit-flip gives a strong forgery)
   else
     let vs := sortLeaves v
     if octopusSize vs > porsM then none
@@ -313,7 +332,7 @@ def expandList (m sig : List Byte) : OracleComp HashSpec (Option (List Byte)) :=
   pure (expandOf sig N)
 
 /-- `ref.expand(pk, m, sig)` (the public key is unused). -/
-def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6068) :
+def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6094) :
     OracleComp HashSpec (Option (Bytes 6348)) := do
   let r ← expandList (toList m) (toList sig)
   pure (r.map (ofList 6348))
@@ -489,7 +508,7 @@ def verifyRef (m : Bytes 32) (pk : Bytes 16) (w : Bytes 6348) : OracleComp HashS
   verifyList (toList m) (toList pk) (toList w)
 
 /-- `ref.verify`: expand, then verify the witness (`false` if expand fails). -/
-def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6068) : OracleComp HashSpec Bool := do
+def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6094) : OracleComp HashSpec Bool := do
   match ← expandRef m pk sig with
   | none => pure false
   | some w => verifyRef m pk w

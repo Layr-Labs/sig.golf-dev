@@ -243,24 +243,24 @@ theorem CodeAt.prefix {image : Image} {pc : Word} {l1 l2 : List (BitVec 32)}
 def piA : List (BitVec 32) := [0x00341193#32, 0x6e01b483#32, 0x008c81b3#32]
 def piB : List (BitVec 32) := [0x00140413#32, 0x00f00893#32, 0xff1414e3#32]
 
-theorem codeAt_piA : CodeAt image (pcOf 153) piA :=
-  CodeAt.prefix (l2 := [0x00918023#32, 0x00140413#32, 0x00f00893#32, 0xff1414e3#32]) codeAt_153
-theorem codeAt_piS : CodeAt image (pcOf 156) [0x00918023#32] := by
-  have := codeAt_153.tail.tail.tail
-  rw [show pcOf 153 + 4 + 4 + 4 = pcOf 156 by rfl] at this
+theorem codeAt_piA : CodeAt image (pcOf 159) piA :=
+  CodeAt.prefix (l2 := [0x00918023#32, 0x00140413#32, 0x00f00893#32, 0xff1414e3#32]) codeAt_159
+theorem codeAt_piS : CodeAt image (pcOf 162) [0x00918023#32] := by
+  have := codeAt_159.tail.tail.tail
+  rw [show pcOf 159 + 4 + 4 + 4 = pcOf 162 by rfl] at this
   exact CodeAt.prefix (l2 := piB) this
-theorem codeAt_piB : CodeAt image (pcOf 157) piB := by
-  have := codeAt_153.tail.tail.tail.tail
-  rwa [show pcOf 153 + 4 + 4 + 4 + 4 = pcOf 157 by rfl] at this
+theorem codeAt_piB : CodeAt image (pcOf 163) piB := by
+  have := codeAt_159.tail.tail.tail.tail
+  rwa [show pcOf 159 + 4 + 4 + 4 + 4 = pcOf 163 by rfl] at this
 
-sym_block blkPiA := symRun { noAlias := true } piA (pcOf 153) 4
-sym_block blkPiB := symRun { noAlias := true } piB (pcOf 157) 4
+sym_block blkPiA := symRun { noAlias := true } piA (pcOf 159) 4
+sym_block blkPiB := symRun { noAlias := true } piB (pcOf 163) 4
 
-theorem pi_body (s : MachineState) (hpc : s.pc = pcOf 153) (j K : Nat)
+theorem pi_body (s : MachineState) (hpc : s.pc = pcOf 159) (j K : Nat)
     (hj : j < 15) (h8 : s.getReg .x8 = BitVec.ofNat 64 j) (h25 : s.getReg .x25 = BitVec.ofNat 64 0x810)
     (hk : s.getMem (BitVec.ofNat 64 (0x6E0 + 8 * j)) = BitVec.ofNat 64 K) :
     Run s 7 (fun u => u.getReg .x8 = BitVec.ofNat 64 (j + 1) ∧
-      u.getReg .x25 = BitVec.ofNat 64 0x810 ∧ u.pc = (if j + 1 = 15 then pcOf 160 else pcOf 153) ∧
+      u.getReg .x25 = BitVec.ofNat 64 0x810 ∧ u.pc = (if j + 1 = 15 then pcOf 166 else pcOf 159) ∧
       (∀ a < 2 ^ 64, u.getByte (BitVec.ofNat 64 a) =
         if a = 0x810 + j then BitVec.ofNat 8 K else s.getByte (BitVec.ofNat 64 a)) ∧
       ∀ x, x ≠ BitVec.ofNat 64 ((0x810 + j) / 8 * 8) → u.getMem x = s.getMem x) := by
@@ -268,7 +268,7 @@ theorem pi_body (s : MachineState) (hpc : s.pc = pcOf 153) (j K : Nat)
     simp only [blkPiA.res, rv_simp, h8]; ex_bvsimp [accessValid_ofNat]; omega
   refine (Run.blk blkPiA codeAt_piA hpc hobl (B := 4) ?_).mono (by rw [show blkPiA.res.cycles = 3 from rfl]) (fun _ h => h)
   set s1 := blkPiA.res.toState s with hs1
-  have p1 : s1.pc = pcOf 156 := by simp only [hs1, blkPiA.res, rv_simp]
+  have p1 : s1.pc = pcOf 162 := by simp only [hs1, blkPiA.res, rv_simp]
   have x3 : s1.getReg .x3 = BitVec.ofNat 64 (0x810 + j) := by
     simp only [hs1, blkPiA.res, rv_simp, h8, h25]; ex_bvsimp []
   have x9 : s1.getReg .x9 = BitVec.ofNat 64 K := by
@@ -282,7 +282,7 @@ theorem pi_body (s : MachineState) (hpc : s.pc = pcOf 153) (j K : Nat)
     (Steps.refl _)
   set s2 := (StoreKind.write s1 (s1.getReg .x3 + 0#64) (s1.getReg .x9) .b).setPC (s1.pc + 4) with hs2
   refine (Run.steps hst (B := 3) ?_).mono (by norm_num) (fun _ h => h)
-  have p2 : s2.pc = pcOf 157 := by rw [hs2, pc_setPC, p1]; rfl
+  have p2 : s2.pc = pcOf 163 := by rw [hs2, pc_setPC, p1]; rfl
   refine Run.of (symRun_sound blkPiB codeAt_piB s2 p2 (by simp only [blkPiB.res, rv_simp])) (le_refl _) ?_
   have hw : s2 = (s1.setByte (BitVec.ofNat 64 (0x810 + j)) (BitVec.ofNat 8 K)).setPC (s1.pc + 4) := by
     rw [hs2, x3, x9, BitVec.add_zero]; simp only [StoreKind.write, truncate8_ofNat]

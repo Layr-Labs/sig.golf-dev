@@ -37,7 +37,7 @@ theorem PB.glob_layers {P : PCtx} {s0 u : MachineState} {gk : List (Reg × Word)
   · intro a ha
     exact (hg.2.1 a (zeroP_sub a (pSlots_sub a ha))).trans (hs0.zero a (pSlots_sub a ha))
 
-/-- The root tail: `folds ≤ 118`, `E = 1`, empty stack (else HALT(1)); the layer constants; the
+/-- The root tail: `folds ≤ 120`, `E = 1`, empty stack (else HALT(1)); the layer constants; the
 precode of layer 4 with the PORS root as its message. -/
 theorem tailF_step (P : PCtx) (_hP : P.ok) (s0 : MachineState) (x c ptr E folds : Nat) (node : Val)
     (stk : List (Val × Nat)) (m : MachineState) (h : TailIn P s0 14 x 2 c ptr E folds node stk m) :
@@ -60,10 +60,10 @@ theorem tailF_step (P : PCtx) (_hP : P.ok) (s0 : MachineState) (x c ptr E folds 
       have := h.a2; simp only [destOf, show (2 : Nat) ≠ 0 by decide, show (2 : Nat) ≠ 1 by decide,
         if_false] at this
       exact this
-  have b1 : ∀ d, Br.holds m (fBr1 d) ↔ d = decide (118 < folds) := by
+  have b1 : ∀ d, Br.holds m (fBr1 d) ↔ d = decide (120 < folds) := by
     intro d
     simp only [fBr1, Br.holds, CmpOp.eval, Rv.E.eval, cw, h.sum, BitVec.ult,
-      ofNat_toNat_lt _ (show 118 < 2 ^ 64 by decide), ofNat_toNat_lt _ (show folds < 2 ^ 64 by omega)]
+      ofNat_toNat_lt _ (show 120 < 2 ^ 64 by decide), ofNat_toNat_lt _ (show folds < 2 ^ 64 by omega)]
     exact eq_comm
   have b2 : ∀ d, Br.holds m (fBr2 d) ↔ d = decide (E ≠ 1) := by
     intro d
@@ -92,10 +92,10 @@ theorem tailF_step (P : PCtx) (_hP : P.ok) (s0 : MachineState) (x c ptr E folds 
         rw [show (BitVec.ofNat 64 (stkOf' (e :: r).length) != BitVec.ofNat 64 EMPTY) = true from bne_iff_ne.mpr hne]
         simp
     rw [this]; exact eq_comm
-  have hpM : porsM = 118 := rfl
+  have hpM : porsM = 120 := rfl
   constructor
   · intro hrej
-    by_cases h1 : 118 < folds
+    by_cases h1 : 120 < folds
     · obtain ⟨u, hu⟩ := pspec_run cR1 m h.pc hK (by
         intro b hb; simp only [rejSpec, List.mem_singleton] at hb; subst hb
         exact (b1 true).mpr (by simp [h1])) (by simp)
@@ -123,7 +123,7 @@ theorem tailF_step (P : PCtx) (_hP : P.ok) (s0 : MachineState) (x c ptr E folds 
         exact ⟨u, 9, le_refl _, hu.steps, hu.ecall rfl, hu.regs (.x5, cw 1) (by simp [rejSpec]),
           hu.regs (.x10, cw 1) (by simp [rejSpec])⟩
   · intro hacc
-    have h1 : ¬ 118 < folds := fun e => hacc (Or.inl (by rw [hpM]; exact e))
+    have h1 : ¬ 120 < folds := fun e => hacc (Or.inl (by rw [hpM]; exact e))
     have h2 : ¬ E ≠ 1 := fun e => hacc (Or.inr (Or.inl e))
     have h3 : ¬ stk ≠ [] := fun e => hacc (Or.inr (Or.inr e))
     obtain ⟨u, hu⟩ := pspec_run cAcc m h.pc hK (by
@@ -234,12 +234,12 @@ theorem segment_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (s x c ptr E fol
     (hK : ∀ (a V c' E' : Nat) (node' : Val) (u : MachineState), a ≤ 14 →
       V = segV (tsel s) (wbyte P.wl ptr) → a = wbyte P.wl ptr % 16 →
       TailIn P s0 s x V c' (ptr + 8 + 16 * a) E' (folds + a) node' stk u →
-      GoodQ u (NT V) (CT V) (folds + a ≤ 118) (AT V (folds + a))
+      GoodQ u (NT V) (CT V) (folds + a ≤ 120) (AT V (folds + a))
         (K (some (ptr + 8 + 16 * a, E', folds + a, node', decide (wbyte P.wl ptr / 16 % 2 = 1)))))
     (hN : ∀ V, V < 3 → 18 + 17 * 14 + NT V ≤ N) (hC : ∀ V a, V < 3 → a ≤ 14 → 18 + 17 * a + CT V ≤ C)
-    (hA : ∀ V a, V < 3 → a ≤ 14 → folds + a ≤ 118 → 18 + 17 * a + AT V (folds + a) ≤ A)
+    (hA : ∀ V a, V < 3 → a ≤ 14 → folds + a ≤ 120 → 18 + 17 * a + AT V (folds + a) ≤ A)
     (h9 : 13 ≤ N ∧ 13 ≤ C ∧ 13 ≤ A) :
-    GoodQ m N C (folds ≤ 118) A (cc (Ref.segment P.idx P.wl ptr E folds pend node) K) := by
+    GoodQ m N C (folds ≤ 120) A (cc (Ref.segment P.idx P.wl ptr E folds pend node) K) := by
   obtain ⟨hrej, hpar, hacc⟩ := seg_step P hP s0 s x c ptr E folds pend node stk m h
   unfold Ref.segment
   simp only []
@@ -247,14 +247,14 @@ theorem segment_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (s x c ptr E fol
   by_cases ha : b % 16 > porsH
   · rw [if_pos ha, cc_pure, hnone]
     obtain ⟨u, hst, hf, h5, h10⟩ := hrej (by unfold porsH at ha; omega)
-    exact GoodQ.steps' hst (GoodQ.reject (Q := folds ≤ 118) (A := 0) hf h5 h10) (by omega) (by omega)
+    exact GoodQ.steps' hst (GoodQ.reject (Q := folds ≤ 120) (A := 0) hf h5 h10) (by omega) (by omega)
       (fun q => ⟨q, by omega⟩)
   rw [if_neg ha]
   have ha14 : b % 16 ≤ 14 := by unfold porsH at ha; omega
   by_cases hp : 0 < b % 16 ∧ b / 32 % 2 ≠ E % 2
   · rw [if_pos hp, cc_pure, hnone]
     obtain ⟨u, hst, hf, h5, h10⟩ := hpar (by omega) ha14 hp.2
-    exact GoodQ.steps' hst (GoodQ.reject (Q := folds ≤ 118) (A := 0) hf h5 h10) (by omega) (by omega)
+    exact GoodQ.steps' hst (GoodQ.reject (Q := folds ≤ 120) (A := 0) hf h5 h10) (by omega) (by omega)
       (fun q => ⟨q, by omega⟩)
   · rw [if_neg hp, cc_bind, pendingHash_eq]
     have hpar' : b % 16 = 0 ∨ segT b = E % 2 := by unfold segT; omega
@@ -263,7 +263,7 @@ theorem segment_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (s x c ptr E fol
     set a := b % 16 with hadef
     set V := segV (tsel s) b with hV
     -- after the pending hash
-    have H : ∀ ans, GoodQ (writeHash u ans) (NT V + 17 * 14 + 2) (CT V + 17 * a) (folds + a ≤ 118) (AT V (folds + a) + 17 * a)
+    have H : ∀ ans, GoodQ (writeHash u ans) (NT V + 17 * 14 + 2) (CT V + 17 * a) (folds + a ≤ 120) (AT V (folds + a) + 17 * a)
         ((fun v => cc (segFolds P.idx P.wl ptr a v E) fun p =>
           match p with
           | (node, E) => K (some (ptr + 8 + 16 * a, E, folds + a, node, decide (b / 16 % 2 = 1))))
@@ -284,7 +284,7 @@ theorem segment_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (s x c ptr E fol
         have := folds_good P s0 s x V a ptr folds stk
           (fun p => match p with
             | (node, E) => K (some (ptr + 8 + 16 * a, E, folds + a, node, decide (b / 16 % 2 = 1))))
-          (NT V) (CT V) (AT V (folds + a)) (folds + a ≤ 118)
+          (NT V) (CT V) (AT V (folds + a)) (folds + a ≤ 120)
           (fun t node' E' u' hT => hK a V t E' node' u' ha14 rfl rfl hT) a 0 (segT b) E (answerBytes 16 ans)
           u2 (by omega) hP2 (by rcases hpar' with e | e <;> [omega; exact e])
         refine GoodQ.steps' hst2 this (by omega) (by omega) (fun q => ⟨by omega, by omega⟩)
@@ -311,7 +311,7 @@ At a segment start of leaf `s` with depth `d` and `F` folds so far, at most `seg
 segments remain (every merge pops, every push ends a leaf), at most `d + 14 - s` merge tails and
 `14 - s` push tails. Every run: `256 = 18 + 17 · 14` per segment (`Cseg`); accepting runs:
 `18` per segment (`16` without folds, `18` with) plus `17` per fold, and the folds total at most
-`118` (`Aseg`). -/
+`120` (`Aseg`). -/
 
 def layN : Nat := 5000 * 5 + 9
 /-- The layers' cost (irreducible here, so that unification never evaluates it). -/
@@ -323,7 +323,7 @@ def segR (s d : Nat) : Nat := 29 - 2 * s + d
 def Cseg (s d : Nat) : Nat :=
   256 * segR s d + 6 * (d + 14 - s) + 4 * (14 - s) + lrest s + 22 + layC
 def Aseg (s d F : Nat) : Nat :=
-  18 * segR s d + 17 * (118 - F) + 6 * (d + 14 - s) + 4 * (14 - s) + lrest s + 22 + layC
+  18 * segR s d + 17 * (120 - F) + 6 * (d + 14 - s) + 4 * (14 - s) + lrest s + 22 + layC
 def Nseg (s d : Nat) : Nat := Cseg s d + layN
 
 /-- After the leaf's last segment (before the push / root tail). -/
@@ -354,8 +354,8 @@ theorem seg_budget (s d : Nat) (hs : s < 15) (hd : d ≤ s) :
     (∀ a, a ≤ 14 → 18 + 17 * a + CtailM s d ≤ Cseg s d) ∧
     (∀ a, a ≤ 14 → 18 + 17 * a + CtailPF s d ≤ Cseg s d) ∧
     (18 + 17 * 14 + NtailM s d ≤ Nseg s d) ∧ (18 + 17 * 14 + NtailPF s d ≤ Nseg s d) ∧
-    (∀ F a, a ≤ 14 → F + a ≤ 118 → 18 + 17 * a + AtailM s d (F + a) ≤ Aseg s d F) ∧
-    (∀ F a, a ≤ 14 → F + a ≤ 118 → 18 + 17 * a + AtailPF s d (F + a) ≤ Aseg s d F) ∧
+    (∀ F a, a ≤ 14 → F + a ≤ 120 → 18 + 17 * a + AtailM s d (F + a) ≤ Aseg s d F) ∧
+    (∀ F a, a ≤ 14 → F + a ≤ 120 → 18 + 17 * a + AtailPF s d (F + a) ≤ Aseg s d F) ∧
     (∀ F, 13 ≤ Nseg s d ∧ 13 ≤ Cseg s d ∧ 13 ≤ Aseg s d F) := by
   have hl := leafCost_le (s + 1)
   have hls : s < 14 → lrest s = leafCost (s + 1) + lrest (s + 1) := lrest_succ s
@@ -381,10 +381,10 @@ theorem segLoop_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (s x : Nat)
     (K : Option (Nat × Nat × Nat × Val × List (Val × Nat)) → OracleComp HashSpec Obs)
     (hnone : K none = pure (false, 0))
     (hK : ∀ ptr E folds node stk c u, TailIn P s0 s x (if s = 14 then 2 else 1) c ptr E folds node stk u →
-      GoodQ u (NtailPF s stk.length) (CtailPF s stk.length) (folds ≤ 118) (AtailPF s stk.length folds)
+      GoodQ u (NtailPF s stk.length) (CtailPF s stk.length) (folds ≤ 120) (AtailPF s stk.length folds)
         (K (some (ptr, E, folds, node, stk)))) :
     ∀ stk ptr E folds pend node c m, DispIn P s0 s x c ptr E folds pend node stk m →
-      GoodQ m (Nseg s stk.length) (Cseg s stk.length) (folds ≤ 118) (Aseg s stk.length folds)
+      GoodQ m (Nseg s stk.length) (Cseg s stk.length) (folds ≤ 120) (Aseg s stk.length folds)
         (cc (segLoop P.idx P.wl ptr E folds pend node stk) K) := by
   intro stk
   induction stk with
@@ -407,7 +407,7 @@ theorem segLoop_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (s x : Nat)
       simp only [hV0, if_true, hm, decide_true, if_true, cc_pure, hnone]
       rw [hV0] at hT
       obtain ⟨u2, hst2, hf2, h52, h102⟩ := (tailM_step P s0 s x c' _ E' _ node' [] u hT).2.1 rfl
-      exact GoodQ.steps' hst2 (GoodQ.reject (Q := folds + a ≤ 118) (A := 0) hf2 h52 h102)
+      exact GoodQ.steps' hst2 (GoodQ.reject (Q := folds + a ≤ 120) (A := 0) hf2 h52 h102)
         (by unfold NtailM CtailM; simp) (by unfold CtailM; simp) (fun q => ⟨q, by unfold AtailM; simp⟩)
     · obtain ⟨hVe, hm⟩ := segV_PF s _ (hV ▸ hV0)
       simp only [hV0, if_false, hm, decide_false, Bool.false_eq_true, cc_pure]
@@ -443,7 +443,7 @@ theorem segLoop_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (s x : Nat)
         exact GoodQ.steps' hst2 this (by simp only [Nseg]; omega) (by omega) (fun q => ⟨q, by omega⟩)
       · simp only [ne_eq, hQ, not_false_eq_true, if_true, cc_pure, hnone]
         obtain ⟨u2, hst2, hf2, h52, h102⟩ := tM.1 pnode Q rest rfl hQ
-        exact GoodQ.steps' hst2 (GoodQ.reject (Q := folds + a ≤ 118) (A := 0) hf2 h52 h102)
+        exact GoodQ.steps' hst2 (GoodQ.reject (Q := folds + a ≤ 120) (A := 0) hf2 h52 h102)
           (by unfold NtailM CtailM; split_ifs <;> omega) (by unfold CtailM; split_ifs <;> omega)
           (fun q => ⟨q, by unfold AtailM; split_ifs <;> omega⟩)
     · obtain ⟨hVe, hm⟩ := segV_PF s _ (hV ▸ hV0)
@@ -461,9 +461,9 @@ theorem leaves_good (P : PCtx) (hP : P.ok) (s0 : MachineState)
     (Kr : Option PorsState → OracleComp HashSpec Obs) (hnone : Kr none = pure (false, 0))
     (hKr : ∀ (x c : Nat) (st : PorsState) (u : MachineState),
       TailIn P s0 14 x 2 c st.ptr st.E st.folds st.node st.stack u →
-      GoodQ u (22 + layC + layN) (22 + layC) (st.folds ≤ 118) (22 + layC) (Kr (some st))) :
+      GoodQ u (22 + layC + layN) (22 + layC) (st.folds ≤ 120) (22 + layC) (Kr (some st))) :
     ∀ n s (st : PorsState) m, s + n = 15 → LeafIn P s0 s st m →
-      GoodQ m (leafCost s + Nseg s st.stack.length) (leafCost s + Cseg s st.stack.length) (st.folds ≤ 118)
+      GoodQ m (leafCost s + Nseg s st.stack.length) (leafCost s + Cseg s st.stack.length) (st.folds ≤ 120)
         (leafCost s + Aseg s st.stack.length st.folds)
         (cc (porsLeaves P.idx P.v P.wl (List.range' s n) st) Kr) := by
   intro n
@@ -483,13 +483,13 @@ theorem leaves_good (P : PCtx) (hP : P.ok) (s0 : MachineState)
     by_cases h1 : s ≠ 0 ∧ ¬ st.prev < leafX P s
     · rw [if_pos h1, cc_pure, hnone]
       obtain ⟨u, k', hk', hst, hf, h5, h10⟩ := hrej (Or.inl h1)
-      exact GoodQ.steps' hst (GoodQ.reject (Q := st.folds ≤ 118) (A := 0) hf h5 h10)
+      exact GoodQ.steps' hst (GoodQ.reject (Q := st.folds ≤ 120) (A := 0) hf h5 h10)
         (by omega) (by omega) (fun q => ⟨q, by omega⟩)
     · rw [if_neg h1]
       by_cases h2 : s = porsK - 1 ∧ ¬ leafX P s < porsT
       · rw [if_pos h2, cc_pure, hnone]
         obtain ⟨u, k', hk', hst, hf, h5, h10⟩ := hrej (Or.inr h2)
-        exact GoodQ.steps' hst (GoodQ.reject (Q := st.folds ≤ 118) (A := 0) hf h5 h10)
+        exact GoodQ.steps' hst (GoodQ.reject (Q := st.folds ≤ 120) (A := 0) hf h5 h10)
           (by omega) (by omega) (fun q => ⟨q, by omega⟩)
       · rw [if_neg h2, cc_bind]
         obtain ⟨u, hst, hD⟩ := hacc (fun hc => hc.elim h1 h2)

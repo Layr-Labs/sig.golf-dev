@@ -193,7 +193,7 @@ def tailCheck (c : Nat) : Bool :=
 
 /-! ### The root tail (checks, layer constants) -/
 
-def fBr1 (d : Bool) : Br := ⟨.ltu, cw 118, .reg .x29, d⟩
+def fBr1 (d : Bool) : Br := ⟨.ltu, cw 120, .reg .x29, d⟩
 def fBr2 (d : Bool) : Br := ⟨.ne, addC (.reg .x23) (-1#64), .c 0, d⟩
 def fBr3 (d : Bool) : Br := ⟨.ne, .reg .x15, cw EMPTY, d⟩
 

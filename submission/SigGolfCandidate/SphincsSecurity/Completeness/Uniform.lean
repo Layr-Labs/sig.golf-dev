@@ -124,15 +124,14 @@ theorem admissible_iff (u : HashOutput) :
     valList_digestLeaves, htrunc]
   simp [ftsAuthCapacity]
 
-/-- A uniform answer's digest is admissible with probability at least `1/2142`. -/
+/-- A uniform answer's digest is admissible with probability at least `2⁻¹⁰` (exactly
+`15! · N / 2²¹⁰ ≈ 2^-9.76`). -/
 theorem probEvent_admissible_ge :
-    (2142 : ℝ≥0∞)⁻¹ ≤ Pr[fun u : HashOutput => Concrete.Admissible (truncateMessageDigest u) |
+    (1024 : ℝ≥0∞)⁻¹ ≤ Pr[fun u : HashOutput => Concrete.Admissible (truncateMessageDigest u) |
       ($ᵗ HashOutput : ProbComp HashOutput)] := by
-  calc
-    _ ≤ ((Nat.factorial 15 * Octopus.Nadm : ℕ) : ℝ≥0∞) / 2 ^ 210 := by
-      simpa only [one_div] using Octopus.admissibleProb_ge
-    _ = Pr[fun u : BitVec 256 => Octopus.admissible u.toNat = true |
-        ($ᵗ BitVec 256 : ProbComp (BitVec 256))] := Octopus.probEvent_admissibleDigest.symm
-    _ = _ := probEvent_congr' (fun u _ => (admissible_iff u).symm) rfl
+  have h := Octopus.probEvent_admissibleDigest_ge
+  rw [show (1 : ℝ≥0∞) / 2 ^ 10 = (1024 : ℝ≥0∞)⁻¹ by norm_num] at h
+  refine h.trans (le_of_eq ?_)
+  exact probEvent_congr' (fun u _ => (admissible_iff u).symm) rfl
 
 end SphincsSecurity.Completeness

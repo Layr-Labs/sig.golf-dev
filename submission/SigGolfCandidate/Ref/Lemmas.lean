@@ -385,11 +385,12 @@ theorem porsSegs_eq : porsSegs = 29 := rfl
 
 /-! ## Signature and witness layout -/
 
-theorem headBytes_eq : headBytes = 2144 := rfl
+theorem headBytes_eq : headBytes = 2176 := rfl
 theorem sigLayerOff_values :
-    (List.range (nLayers + 1)).map sigLayerOff = [2144, 2996, 3768, 4540, 5312, 6068] := by
+    (List.range (nLayers + 1)).map sigLayerOff = [2176, 3024, 3792, 4560, 5328, 6080] := by
   decide
-theorem sigBytes_eq_sigLayerOff : sigBytes = sigLayerOff nLayers := by decide
+theorem sigTrailerOff_eq : sigTrailerOff = 6080 := by decide
+theorem sigBytes_eq_sigLayerOff : sigBytes = sigLayerOff nLayers + trailerBytes := by decide
 theorem wStream_eq : wStream = 272 := rfl
 theorem streamBytes_eq : streamBytes = 2152 := rfl
 theorem wLayers_eq : wLayers = 2424 := rfl
@@ -436,24 +437,21 @@ private theorem length_flatten_map_range' (n : Nat) (f : Nat → List Byte) (g :
 bytes and 15 sorted leaves). -/
 theorem length_witnessList (sig : List Byte) (hsig : sig.length = sigBytes) (v vs segs : List Nat)
     (hvs : vs.length = porsK) : (witnessList sig v vs segs).length = witBytes := by
-  have hs : sig.length = 6068 := hsig
-  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigLayerBytes lay ≤ 6068 := by decide
+  have hs : sig.length = 6094 := hsig
+  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigLayerBytes lay ≤ 6094 := by decide
   have hitem : ∀ i, i < porsK → (sigItem sig i).length = 16 := fun i hi =>
     length_slice _ _ _ (by rw [hs]; unfold porsK at hi; omega)
-  have hbody : ∀ lay, lay < nLayers → (sigLayerBody sig lay).length = sigLayerBytes lay - 4 :=
+  have hbody : ∀ lay, lay < nLayers → (sigLayerBody sig lay).length = sigLayerBytes lay :=
     fun lay hl => length_slice _ _ _ (by
-      have := hoff lay hl; have : 4 ≤ sigLayerBytes lay := by unfold sigLayerBytes; omega
-      rw [hs]; omega)
+      have := hoff lay hl; rw [hs]; omega)
   have hctr : ∀ lay, lay < nLayers → (sigCounterBytes sig lay).length = 4 :=
-    fun lay hl => length_slice _ _ _ (by
-      have := hoff lay hl; have : 4 ≤ sigLayerBytes lay := by unfold sigLayerBytes; omega
-      rw [hs]; omega)
+    fun lay hl => by simp [sigCounterBytes, le32, leBytes]
   unfold witnessList
   simp only [List.length_append, List.length_map, List.length_take, length_zeros, hvs,
     length_flatten_map_range _ _ _ hitem, length_flatten_map_range _ _ _ hctr,
     length_flatten_map_range' _ _ _ hbody]
   rw [show (sigRho sig).length = 16 from length_slice _ _ _ (by rw [hs]; decide)]
-  have : ((List.range nLayers).map fun lay => sigLayerBytes lay - 4).sum = 3904 := by decide
+  have : ((List.range nLayers).map fun lay => sigLayerBytes lay).sum = 3904 := by decide
   rw [this]
   have : min streamBytes ((segStream sig segs).length + streamBytes) = streamBytes := by omega
   rw [this]
@@ -464,6 +462,8 @@ theorem length_of_expandOf (sig : List Byte) (hsig : sig.length = sigBytes) (N :
     (w : List Byte) (h : expandOf sig N = some w) : w.length = witBytes := by
   unfold expandOf at h
   dsimp only at h
+  split at h
+  · cases h
   split at h
   · cases h
   split at h

@@ -227,18 +227,23 @@ theorem serialize_layers (parts : Layer → SphincsSecurity.Concrete.LayerOutput
     (hσ : σ.layers = fun lay => SphincsSecurity.Concrete.LayerOutput.toSignature lay (parts lay)) :
     ((List.ofFn fun l : Fin (4 + 1) =>
         layerRef (Fin.castLE (le_refl 5) l) (parts (Fin.castLE (le_refl 5) l))).map
-      fun l => Ref.le32 l.1 ++ l.2.1.flatten ++ l.2.2.flatten).flatten =
+      fun l => l.2.1.flatten ++ l.2.2.flatten).flatten =
       (List.ofFn (layerBytes σ)).flatten := by
   simp only [List.map_ofFn]
   congr 2
   funext l
   simp only [Function.comp, layerBytes, layerRef, map_range_eq_ofFn, hσ,
     SphincsSecurity.Concrete.LayerOutput.toSignature]
-  rw [Ref.le32, leBytes_eq_toList]
-  have e : ∀ c : SphincsSecurity.Counter,
-      Ref.toList (n := 4) (BitVec.ofNat (8 * 4) c.toNat) = Ref.toList (n := 4) c := fun c => by
-    rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]
-  rw [e]
+  rfl
+
+/-- The counter trailer of the reference serialization. -/
+theorem serialize_trailer (parts : Layer → SphincsSecurity.Concrete.LayerOutput) (σ : Signature)
+    (hσ : σ.layers = fun lay => SphincsSecurity.Concrete.LayerOutput.toSignature lay (parts lay)) :
+    Ref.leBytes Ref.trailerBytes (Ref.packCounters ((List.ofFn fun l : Fin (4 + 1) =>
+        layerRef (Fin.castLE (le_refl 5) l) (parts (Fin.castLE (le_refl 5) l))).map fun l => l.1)) =
+      trailerOf σ := by
+  unfold trailerOf
+  rw [hσ, List.map_ofFn]
   rfl
 
 /-- **The signature bytes**: the reference serialization of the PORS opening and the layers is the
@@ -259,7 +264,7 @@ theorem serialize_eq (rho : Digest) (leaves : IndexGroup → FtsLeaf)
   set σ : Signature := ⟨rho, SphincsSecurity.Concrete.honestFts leaves sec T,
       fun lay => SphincsSecurity.Concrete.LayerOutput.toSignature lay (parts lay)⟩ with hσ
   unfold Ref.serialize compressList
-  rw [serialize_layers parts σ rfl, sortLeaves_eq]
+  rw [serialize_layers parts σ rfl, serialize_trailer parts σ rfl, sortLeaves_eq]
   unfold Ref.porsOpening
   rw [schedule_ref _ (sortedLeaves_lt leaves)]
   simp only
@@ -278,7 +283,7 @@ theorem serialize_eq (rho : Digest) (leaves : IndexGroup → FtsLeaf)
     obtain ⟨h1, h2⟩ := (hseg sg hsg).2 p hpl
     exact levels_node T p h1 h2
   rw [opening_secrets leaves sec T, hY]
-  have hn : (authNodes σ).length ≤ 118 := by
+  have hn : (authNodes σ).length ≤ 120 := by
     rw [hσ, authNodes_honest rho leaves hadm sec T, List.length_map, hoct]
     exact hoct'
   have hA := length_flatten_map_dv (authNodes σ)
@@ -286,8 +291,8 @@ theorem serialize_eq (rho : Digest) (leaves : IndexGroup → FtsLeaf)
     List.length_ofFn, List.length_map, Ref.zeros, Ref.porsK, Ref.porsM, List.append_assoc]
   rw [List.take_append, List.take_of_length_le (by rw [hA]; omega), hA,
     List.take_replicate]
-  have hk : (15 + 118 - (SphincsSecurity.ftsOpenings + (authNodes σ).length)) * 16 =
-      min (16 * 118 - 16 * (authNodes σ).length) (16 * 118) := by
+  have hk : (15 + 120 - (SphincsSecurity.ftsOpenings + (authNodes σ).length)) * 16 =
+      min (16 * 120 - 16 * (authNodes σ).length) (16 * 120) := by
     simp only [SphincsSecurity.ftsOpenings]; omega
   rw [hk]
   simp only [List.append_assoc]

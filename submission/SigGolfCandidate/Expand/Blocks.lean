@@ -38,21 +38,17 @@ sym_block blk132 := symRun { noAlias := true } seg132 (pcOf 132) 3
 sym_block blk134 := symRun { noAlias := true } seg134 (pcOf 134) 2
 sym_block blk135 := symRun { noAlias := true } seg135 (pcOf 135) 3
 sym_block blk137 := symRun { noAlias := true } seg137 (pcOf 137) 3
-sym_block blk139 := symRun { noAlias := true } seg139 (pcOf 139) 6
-sym_block blk150 := symRun { noAlias := true } seg150 (pcOf 150) 4
-sym_block blk153 := symRun { noAlias := true } seg153 (pcOf 153) 8
-sym_block blk160 := symRun { noAlias := true } seg160 (pcOf 160) 6
-sym_block blk171 := symRun { noAlias := true } seg171 (pcOf 171) 6
-sym_block blk182 := symRun { noAlias := true } seg182 (pcOf 182) 6
-sym_block blk193 := symRun { noAlias := true } seg193 (pcOf 193) 6
-sym_block blk204 := symRun { noAlias := true } seg204 (pcOf 204) 6
-sym_block blk215 := symRun { noAlias := true } seg215 (pcOf 215) 6
-sym_block blk226 := symRun { noAlias := true } seg226 (pcOf 226) 6
-sym_block blk237 := symRun { noAlias := true } seg237 (pcOf 237) 6
-sym_block blk248 := symRun { noAlias := true } seg248 (pcOf 248) 6
-sym_block blk259 := symRun { noAlias := true } seg259 (pcOf 259) 6
-sym_block blk270 := symRun { noAlias := true } seg270 (pcOf 270) 6
-sym_block blk281 := symRun { noAlias := true } seg281 (pcOf 281) 4
-sym_block blk284 := symRun { noAlias := true } seg284 (pcOf 284) 4
+sym_block blk139 := symRun { noAlias := true } seg139 (pcOf 139) 7
+sym_block blk145 := symRun { noAlias := true } seg145 (pcOf 145) 6
+sym_block blk156 := symRun { noAlias := true } seg156 (pcOf 156) 4
+sym_block blk166 := symRun { noAlias := true } seg166 (pcOf 166) 6
+sym_block blk177 := symRun { noAlias := true } seg177 (pcOf 177) 6
+sym_block blk188 := symRun { noAlias := true } seg188 (pcOf 188) 6
+sym_block blk199 := symRun { noAlias := true } seg199 (pcOf 199) 6
+sym_block blk210 := symRun { noAlias := true } seg210 (pcOf 210) 6
+sym_block blk221 := symRun { noAlias := true } seg221 (pcOf 221) 6
+sym_block blk232 := symRun { noAlias := true } seg232 (pcOf 232) 29
+sym_block blk260 := symRun { noAlias := true } seg260 (pcOf 260) 4
+sym_block blk263 := symRun { noAlias := true } seg263 (pcOf 263) 4
 
 end SigGolfCandidate.Expand
