@@ -1,4 +1,3 @@
-import SigGolfCandidate.SphincsSecurity.Proof.Fts.MessagePrehit
 import SigGolfCandidate.SphincsSecurity.Proof.Reference.FixedHashBoundary
 import SigGolfCandidate.SphincsSecurity.Proof.Residual.RetainedObservation
 namespace SphincsSecurity.Concrete.RetainedResidual
