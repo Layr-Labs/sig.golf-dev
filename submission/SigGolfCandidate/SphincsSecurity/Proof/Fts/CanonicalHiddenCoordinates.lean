@@ -115,12 +115,16 @@ theorem hidden_slot_unary (words : OtsReferenceWords) (disclosed : Index → Fts
         simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil, or_false] at hcoordinate
       · rcases hcoordinate with rfl | rfl <;> exact hhidden.elim
       · rcases hcoordinate with rfl | rfl <;> exact hhidden.elim
-  | ftsNode index tree heap =>
+  | ftsNode index tree level leaf =>
       simp only [slots, Position.children] at hcoordinate
       split_ifs at hcoordinate <;>
         simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil, or_false] at hcoordinate
       · rcases hcoordinate with rfl | rfl <;> exact hhidden.elim
       · rcases hcoordinate with rfl | rfl <;> exact hhidden.elim
+  | ftsRoots index =>
+      simp only [slots, Position.children, List.map_ofFn, List.mem_ofFn] at hcoordinate
+      obtain ⟨tree, rfl⟩ := hcoordinate
+      exact hhidden.elim
 
 end CanonicalCoordinate
 
