@@ -263,7 +263,7 @@ def k0 : List (Reg × Word) :=
 
 /-- Digest phase: witness bases and `P1 .. P5`. -/
 def gkD : List (Reg × Word) := baseK
-def dgK : List (Reg × Word) := gkD ++ [(.x10, 0x20), (.x11, 64), (.x12, 0x160)]
+def dgK : List (Reg × Word) := gkD ++ [(.x10, 0x20), (.x11, 64), (.x12, 0x160), (.x29, 0)]
 
 /-- The counters: two doublewords and a word at `WIT + 6328`. -/
 def ctrX : E := .bin .or (.bin .or (ldE 8376) (ldE 8384)) (.un (.ld .wu 0) (ldE 8392))
@@ -271,8 +271,8 @@ def ctrE' : E := .bin .srl (.bin .or ctrX (.bin .sll ctrX (cw 32))) (cw 54)
 
 def specStartOk : Spec :=
   ⟨[], [(⟨none, BitVec.ofNat 64 56⟩, ldE 2056), (⟨none, BitVec.ofNat 64 48⟩, ldE 2048),
-    (⟨none, BitVec.ofNat 64 32⟩, cw 3073)], 28, true, 28, [⟨.ne, ctrE', .c 0, false⟩], none⟩
-def specStartRej : Spec := ⟨[(.x5, cw 1), (.x10, cw 1)], [], 32, true, 20, [⟨.ne, ctrE', .c 0, true⟩], none⟩
+    (⟨none, BitVec.ofNat 64 32⟩, cw 3073)], 26, true, 26, [⟨.ne, ctrE', .c 0, false⟩], none⟩
+def specStartRej : Spec := ⟨[(.x5, cw 1), (.x10, cw 1)], [], 32, true, 19, [⟨.ne, ctrE', .c 0, true⟩], none⟩
 
 def wLdE (i : Nat) : E := ldE (0x160 + 8 * i)
 def idxE : E := .bin .srl (.bin .sll (wLdE 0) (cw 30)) (cw 30)
@@ -302,11 +302,11 @@ the empty stack, `SUM = 0`. -/
 def setupPost : List (Reg × Word) :=
   gkP ++ [(.x20, BitVec.ofNat 64 tbN), (.x14, 0x830), (.x15, BitVec.ofNat 64 EMPTY), (.x29, 0)]
 
-def setupSpec : Spec := ⟨[(.x22, idxE)], psetupMem, leafPc 0, false, 108, [], none⟩
+def setupSpec : Spec := ⟨[(.x22, idxE)], psetupMem, leafPc 0, false, 104, [], none⟩
 
 def startCheck : Bool :=
   specB gkD (runAt k0 [] 0 [.br false]) specStartOk dgK [] &&
   specB [] (runAt k0 [] 0 [.br true]) specStartRej [] [] &&
-  specB gkD (runAt dgK [leafPc 0] 29 []) setupSpec setupPost []
+  specB gkD (runAt dgK [leafPc 0] 27 []) setupSpec setupPost []
 
 end SigGolfCandidate.Verify
