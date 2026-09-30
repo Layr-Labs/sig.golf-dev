@@ -1,5 +1,4 @@
 import SigGolfCandidate.SphincsSecurity.Proof.Base.Prelude
-import SigGolfCandidate.SphincsSecurity.Proof.Scheme.HashOutputSplit
 import SigGolfCandidate.SphincsSecurity.Proof.Fts.CanonicalHiddenCoordinates
 import SigGolfCandidate.SphincsSecurity.Proof.Base.UniformTableSplit
 namespace SphincsSecurity.Concrete
