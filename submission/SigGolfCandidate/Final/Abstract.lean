@@ -147,28 +147,6 @@ theorem sign_shape (seed : MasterSeed) (message : Message) {pk : PublicKey} {cac
     subst hfts
     exact ⟨_, _, rfl⟩
 
-/-- The counters of an honestly produced signature are below the encoding attempt limit `2^22`. -/
-theorem sign_counters (seed : MasterSeed) (message : Message) {pk : PublicKey} {cache : TopCache}
-    {sk : Seeded.SecretKey} {S : Signature}
-    (hkeys : evalWithAnswerFn f (Seeded.keygenFromSeed seed) = (pk, cache, sk))
-    (hsign : evalWithAnswerFn f (Seeded.sign sk cache message
-      : OracleComp SphincsSecurity.HashSpec (Option Signature)) = some S) :
-    ∀ lay, (S.layers lay).counter.toNat < 2 ^ 22 := by
-  rw [Completeness.eval_keygenFromSeed] at hkeys
-  simp only [Prod.mk.injEq] at hkeys
-  obtain ⟨rfl, rfl, rfl⟩ := hkeys
-  obtain ⟨-, hsig⟩ := Completeness.signChecked_spec f _ _ (Completeness.keygen_cacheHonest f seed _)
-    message (Completeness.signChecked_of_sign f _ _ message hsign)
-  unfold Concrete.signatureValue at hsig
-  rw [Concrete.sequenceFin_option_eq] at hsig
-  split at hsig
-  next hall =>
-    simp only [Option.map_some, Option.some.injEq] at hsig
-    intro lay
-    rw [← hsig]
-    exact (Completeness.signLayer_spec f _ _ lay (Option.some_get (hall lay)).symm).1
-  next => simp at hsig
-
 /-- Under a fixed answer function, the expansion of an honestly produced signature succeeds with a
 witness decoding to the signature. -/
 theorem eval_aExpand_sign (seed : MasterSeed) (message : Message) {pk : PublicKey} {cache : TopCache}
@@ -181,7 +159,7 @@ theorem eval_aExpand_sign (seed : MasterSeed) (message : Message) {pk : PublicKe
   obtain ⟨hpk, hP, hadm, secret, node, hS⟩ := sign_shape f seed message hkeys hsign
   set d := Completeness.digestValue f sk message S.randomness with hd
   obtain ⟨wl, hlen, hexp, hwit⟩ := Equiv.expandOf_honest (Concrete.digestLeaves d) hadm d.toNat
-    (fun r => Equiv.leafOf_eq d r) S.randomness secret node S.layers (sign_counters f seed message hkeys hsign)
+    (fun r => Equiv.leafOf_eq d r) S.randomness secret node S.layers
   refine ⟨Ref.ofList 6348 wl, ?_, ?_⟩
   · unfold Equiv.aExpand
     rw [ofList_sigRho_compress, evalWithAnswerFn_bind, evalWithAnswerFn_pure]

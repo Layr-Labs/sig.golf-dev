@@ -307,7 +307,7 @@ theorem encpost_step (L : LCtx) (hL : L.ok) (t : Nat) (ht : t < nCopy L.lay) (a 
           unfold chainAddr; rw [witLayerOff_eq _ hlay]; omega
         have hlb := layBody_le _ hlay
         have hw0 := setup_word L.lay hlay s hC0
-        refine ⟨u, hu.steps, ⟨hu.glob _ _ _ hG, hu.known, ⟨?_, ?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_⟩, ?_, ⟨?_, ?_⟩,
+        refine ⟨u, hu.steps, ⟨hu.glob _ _ _ hG, hu.known, ⟨?_, ?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_⟩, ?_, ⟨?_, ?_, ?_⟩,
           ?_, fun j hj => by simp at hj, rfl, by simp, ?_, ?_, ?_⟩, hcok, ?_, hsum,
           by simp [digitsOfWord]⟩
         · rw [hu.regs (.x16, d0E) (by simp [specBok])]; exact hD0
@@ -322,6 +322,8 @@ theorem encpost_step (L : LCtx) (hL : L.ok) (t : Nat) (ht : t < nCopy L.lay) (a 
         · unfold CBi; rw [hmem]; simp only [specBok]; rw [setup_C0, hw0]; unfold hWord; omega
         · rw [hu.regs (.x15, cw (bVal L.lay 0)) (by simp [specBok])]; rfl
         · rw [hu.regs (.x14, rE0 L.lay) (by simp [specBok]), hr0]
+        · intro hzero _
+          omega
         · by_cases h6 : L.lay = 4
           · unfold CBZ; rw [hmem, hmem]; simp only [specBok]
             exact ⟨setup_Z6 _ _ h6 224 (by omega), setup_Z6 _ _ h6 232 (by omega)⟩

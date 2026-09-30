@@ -42,11 +42,11 @@ theorem copy_hit (g : Nat → Byte) (c : Nat × Nat × Nat) (hc : c ∈ copyRest
     applyCopies copyRest g x = g (x - c.2.1 + c.1) :=
   applyCopies_hit copyRest g copyRest_pairwise copyRest_srcdst c hc x h1 h2
 
-theorem copy_miss (g : Nat → Byte) (x : Nat) (hx : x < 0x820 ∨ (0x910 ≤ x ∧ x < 0x1178) ∨ 0x20B8 ≤ x) :
+theorem copy_miss (g : Nat → Byte) (x : Nat) (hx : x < 0x820 ∨ (0x910 ≤ x ∧ x < 0x1178)) :
     applyCopies copyRest g x = g x :=
   applyCopies_frame copyRest g x (by
     intro c hc; simp only [copyRest, List.mem_cons, List.not_mem_nil, or_false] at hc
-    rcases hc with rfl | rfl | rfl | rfl | rfl | rfl <;> simp <;> omega)
+    rcases hc with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp <;> omega)
 
 theorem flatten_slices (l : List Byte) (off len : Nat) :
     ∀ n, ((List.range n).map (fun k => slice l (off + len * k) len)).flatten = slice l off (len * n) := by
@@ -61,153 +61,67 @@ theorem flatten_slices (l : List Byte) (off len : Nat) :
 theorem getD_take' (l : List Byte) (n i : Nat) (hi : i < n) : (l.take n).getD i 0 = l.getD i 0 := by
   simp only [List.getD_eq_getElem?_getD, List.getElem?_take]; rw [if_pos hi]
 
-theorem div_mod_add_high (x J m : Nat) (hm : m + 22 ≤ 112) :
-    (x + 2 ^ 112 * J) / 2 ^ m % 2 ^ 22 = x / 2 ^ m % 2 ^ 22 := by
-  have h1 : 2 ^ 112 * J = 2 ^ m * (2 ^ (112 - m) * J) := by
-    rw [← Nat.mul_assoc, ← Nat.pow_add]; congr 2; omega
-  rw [h1, Nat.add_mul_div_left _ _ (by positivity)]
-  have h2 : 2 ^ (112 - m) * J = 2 ^ 22 * (2 ^ (112 - m - 22) * J) := by
-    rw [← Nat.mul_assoc, ← Nat.pow_add]; congr 2; omega
-  rw [h2, Nat.add_mul_mod_self_left]
-
-theorem getD_le32 (v k : Nat) (hk : k < 4) : (le32 v).getD k 0 = byte (v / 256 ^ k) := by
-  simp [le32, leBytes, List.getD_eq_getElem?_getD, hk]
-
-theorem slice_eq_map (l : List Byte) (off len : Nat) (h : off + len ≤ l.length) :
-    slice l off len = (List.range len).map (fun j => l.getD (off + j) 0) := by
-  apply List.ext_getElem (by simp [slice]; omega)
-  intro n h1 h2
-  simp only [List.length_map, List.length_range] at h2
-  rw [List.getElem_map, List.getElem_range, ← List.getD_eq_getElem _ 0 h1, getD_slice' _ _ _ _ h2]
-
-theorem leNat_range_add (f : Nat → Byte) (m n : Nat) :
-    leNat ((List.range (m + n)).map f) =
-      leNat ((List.range m).map f) + 256 ^ m * leNat ((List.range n).map fun j => f (m + j)) := by
-  rw [List.range_add, List.map_append, leNat_append, List.map_map, List.length_map, List.length_range]
-  rfl
-
-/-- The unpacked counter bytes are `ref`'s `sigCounterBytes`. -/
-theorem unpack_counter (G : Nat → Byte) (sig : List Byte) (hsig : sig.length = 6094)
-    (hG : ∀ j < 6094, G (0x3300 + j) = sig.getD j 0) (l k : Nat) (hl : l < 5) (hk : k < 4) :
-    unpackF G (0x20B8 + 4 * l + k) = (sigCounterBytes sig l).getD k 0 := by
-  unfold unpackF sigCounterBytes
-  rw [if_pos (by omega), show (0x20B8 + 4 * l + k - 0x20B8) / 4 = l by omega,
-    show (0x20B8 + 4 * l + k - 0x20B8) % 4 = k by omega, if_pos hl, getD_le32 _ _ hk]
-  set X6 := leNat ((List.range 6).map fun j => G (19144 + j)) with hX6
-  set J := leNat ((List.range 2).map fun j => G (19144 + (6 + j))) with hJ
-  have hw1 : dwOf G 19144 = X6 + 2 ^ 48 * J := by
-    unfold dwOf
-    rw [show (8 : Nat) = 6 + 2 from rfl, leNat_range_add]
-    norm_num [hX6, hJ]
-  have hT : leNat (slice sig sigTrailerOff trailerBytes) = dwOf G 19136 + 2 ^ 64 * X6 := by
-    rw [slice_eq_map _ _ _ (by rw [sigTrailerOff_eq, hsig]; decide), sigTrailerOff_eq,
-      show trailerBytes = 8 + 6 from rfl, leNat_range_add]
-    unfold dwOf
-    have e1 : ((List.range 8).map fun j => sig.getD (6080 + j) 0) = (List.range 8).map fun k => G (19136 + k) := by
-      apply List.map_congr_left; intro j hj; rw [List.mem_range] at hj
-      rw [← hG _ (by omega)]; congr 1; omega
-    have e2 : ((List.range 6).map fun j => sig.getD (6080 + (8 + j)) 0) = (List.range 6).map fun j => G (19144 + j) := by
-      apply List.map_congr_left; intro j hj; rw [List.mem_range] at hj
-      rw [← hG _ (by omega)]; congr 1; omega
-    rw [e1, e2]
-    norm_num [hX6]
-  have key : fieldOf (dwOf G 19136) (dwOf G 19144) l =
-      leNat (slice sig sigTrailerOff trailerBytes) / 2 ^ (22 * l) % 2 ^ 22 := by
-    rw [hT, hw1]
-    unfold fieldOf
-    rw [show dwOf G 19136 + 2 ^ 64 * (X6 + 2 ^ 48 * J) = (dwOf G 19136 + 2 ^ 64 * X6) + 2 ^ 112 * J by ring]
-    exact div_mod_add_high _ _ _ (by omega)
-  rw [key]
-
-theorem witness_bytes (sig : List Byte) (hsig : sig.length = 6094) (N : Nat) (A : Nat → Nat)
+theorem witness_bytes (sig : List Byte) (hsig : sig.length = 6068) (N : Nat) (A : Nat → Nat)
     (hSK : SortedKeys N A) (hn : (leavesOf N).Nodup) (segs : List Nat) (f0 : Nat → Byte)
-    (h1 : ∀ j < 6094, f0 (0x3300 + j) = sig.getD j 0)
+    (h1 : ∀ j < 6068, f0 (0x3300 + j) = sig.getD j 0)
     (h2 : ∀ i < 2152, f0 (0x910 + i) = (curStream sig segs 0).getD i 0) (h3 : f0 0x81F = 0) :
-    ∀ i < 6348, unpackF (applyCopies copyRest (piF A 15 (applyCopy (0x3300, 0x800, 4) f0))) (0x800 + i) =
+    ∀ i < 6348, applyCopies copyRest (piF A 15 (applyCopy (0x3300, 0x800, 4) f0)) (0x800 + i) =
       (witnessList sig (leavesOf N) (vsOf A) segs).getD i 0 := by
   intro i hi
   set g := piF A 15 (applyCopy (0x3300, 0x800, 4) f0) with hg
   -- the signature under the copies
-  have hgs : ∀ j < 6094, g (0x3300 + j) = sig.getD j 0 := by
+  have hgs : ∀ j < 6068, g (0x3300 + j) = sig.getD j 0 := by
     intro j hj; simp only [hg, piF, applyCopy]; rw [if_neg (by omega), if_neg (by omega)]; exact h1 j hj
-  have hGs : ∀ j < 6094, applyCopies copyRest g (0x3300 + j) = sig.getD j 0 := fun j hj => by
-    rw [copy_miss g _ (by omega)]; exact hgs j hj
   -- the witness as one concatenation with explicit lengths
   have eS : ((List.range porsK).map (sigItem sig)).flatten = slice sig 16 240 := by
     have := flatten_slices sig 16 16 15
     simp only [show 16 * 15 = 240 from rfl] at this
     rw [← this]; unfold porsK sigItem; rfl
   have eB : ((List.range nLayers).map (sigLayerBody sig)).flatten =
-      slice sig 2176 848 ++ (slice sig 3024 768 ++ (slice sig 3792 768 ++ (slice sig 4560 768 ++
-        slice sig 5328 752))) := by
+      slice sig 2148 848 ++ (slice sig 3000 768 ++ (slice sig 3772 768 ++ (slice sig 4544 768 ++
+        slice sig 5316 752))) := by
     simp only [nLayers, List.range_succ, List.range_zero, List.map_append, List.map_cons, List.map_nil,
       List.nil_append, List.flatten_append, List.flatten_cons, List.flatten_nil, List.append_nil,
       List.append_assoc]
     unfold sigLayerBody
-    rw [show sigLayerOff 0 = 2176 by decide, show sigLayerOff 1 = 3024 by decide,
-      show sigLayerOff 2 = 3792 by decide, show sigLayerOff 3 = 4560 by decide,
-      show sigLayerOff 4 = 5328 by decide, show sigLayerBytes 0 = 848 by decide,
-      show sigLayerBytes 1 = 768 by decide, show sigLayerBytes 2 = 768 by decide,
-      show sigLayerBytes 3 = 768 by decide, show sigLayerBytes 4 = 752 by decide]
+    rw [show sigLayerOff 0 = 2144 by decide, show sigLayerOff 1 = 2996 by decide,
+      show sigLayerOff 2 = 3768 by decide, show sigLayerOff 3 = 4540 by decide,
+      show sigLayerOff 4 = 5312 by decide, show sigLayerBytes 0 = 852 by decide,
+      show sigLayerBytes 1 = 772 by decide, show sigLayerBytes 2 = 772 by decide,
+      show sigLayerBytes 3 = 772 by decide, show sigLayerBytes 4 = 756 by decide]
   have eC : ((List.range nLayers).map (sigCounterBytes sig)).flatten =
-      sigCounterBytes sig 0 ++ (sigCounterBytes sig 1 ++ (sigCounterBytes sig 2 ++ (sigCounterBytes sig 3 ++
-        sigCounterBytes sig 4))) := by
+      slice sig 2144 4 ++ (slice sig 2996 4 ++ (slice sig 3768 4 ++ (slice sig 4540 4 ++
+        slice sig 5312 4))) := by
     simp only [nLayers, List.range_succ, List.range_zero, List.map_append, List.map_cons, List.map_nil,
       List.nil_append, List.flatten_append, List.flatten_cons, List.flatten_nil, List.append_nil,
       List.append_assoc]
+    unfold sigCounterBytes
+    rw [show sigLayerOff 0 = 2144 by decide, show sigLayerOff 1 = 2996 by decide,
+      show sigLayerOff 2 = 3768 by decide, show sigLayerOff 3 = 4540 by decide,
+      show sigLayerOff 4 = 5312 by decide]
   have lr : (sigRho sig).length = 16 := length_slice' _ _ _ (by omega)
   have lp : ((vsOf A).map (fun x => byte (8 * (leavesOf N).idxOf x))).length = 15 := by simp [vsOf]
   have lz : (zeros (wSec - wPi - porsK)).length = 1 := by simp [zeros, wSec, wPi, porsK]
   have ls : (slice sig 16 240).length = 240 := length_slice' _ _ _ (by omega)
   have lt : ((segStream sig segs ++ zeros streamBytes).take streamBytes).length = 2152 := by
     rw [List.length_take, List.length_append, streamBytes_eq]; simp only [zeros, List.length_replicate]; omega
-  have l0 : (slice sig 2176 848).length = 848 := length_slice' _ _ _ (by omega)
-  have l1 : (slice sig 3024 768).length = 768 := length_slice' _ _ _ (by omega)
-  have l2 : (slice sig 3792 768).length = 768 := length_slice' _ _ _ (by omega)
-  have l3 : (slice sig 4560 768).length = 768 := length_slice' _ _ _ (by omega)
-  have l4 : (slice sig 5328 752).length = 752 := length_slice' _ _ _ (by omega)
-  have kc : ∀ l, (sigCounterBytes sig l).length = 4 := fun l => by simp [sigCounterBytes, le32, leBytes]
-  have k0 := kc 0
-  have k1 := kc 1
-  have k2 := kc 2
-  have k3 := kc 3
-  have k4 := kc 4
+  have l0 : (slice sig 2148 848).length = 848 := length_slice' _ _ _ (by omega)
+  have l1 : (slice sig 3000 768).length = 768 := length_slice' _ _ _ (by omega)
+  have l2 : (slice sig 3772 768).length = 768 := length_slice' _ _ _ (by omega)
+  have l3 : (slice sig 4544 768).length = 768 := length_slice' _ _ _ (by omega)
+  have l4 : (slice sig 5316 752).length = 752 := length_slice' _ _ _ (by omega)
+  have k0 : (slice sig 2144 4).length = 4 := length_slice' _ _ _ (by omega)
+  have k1 : (slice sig 2996 4).length = 4 := length_slice' _ _ _ (by omega)
+  have k2 : (slice sig 3768 4).length = 4 := length_slice' _ _ _ (by omega)
+  have k3 : (slice sig 4540 4).length = 4 := length_slice' _ _ _ (by omega)
+  have k4 : (slice sig 5312 4).length = 4 := length_slice' _ _ _ (by omega)
   unfold witnessList
   rw [eS, eB, eC]
   simp only [List.append_assoc]
   simp only [getD_app, lr, lp, lz, ls, lt, l0, l1, l2, l3, l4, k0, k1, k2, k3, k4, List.length_nil]
-  -- the counters
-  have ctr : ∀ l, l < 5 → 6328 + 4 * l ≤ i → i < 6328 + 4 * l + 4 →
-      unpackF (applyCopies copyRest g) (0x800 + i) = (sigCounterBytes sig l).getD (i - 6328 - 4 * l) 0 := by
-    intro l hl h1 h2
-    rw [show 0x800 + i = 0x20B8 + 4 * l + (i - 6328 - 4 * l) by omega]
-    exact unpack_counter _ sig hsig hGs l _ hl (by omega)
-  by_cases hc : 6328 ≤ i
-  · rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega)]
-    by_cases q5 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 < 4
-    · rw [if_pos q5, ctr 0 (by norm_num) (by omega) (by omega)]
-      exact congrArg (fun j => (sigCounterBytes sig 0).getD j 0) (by omega)
-    rw [if_neg q5]
-    by_cases q6 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 < 4
-    · rw [if_pos q6, ctr 1 (by norm_num) (by omega) (by omega)]
-      exact congrArg (fun j => (sigCounterBytes sig 1).getD j 0) (by omega)
-    rw [if_neg q6]
-    by_cases q7 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 - 4 < 4
-    · rw [if_pos q7, ctr 2 (by norm_num) (by omega) (by omega)]
-      exact congrArg (fun j => (sigCounterBytes sig 2).getD j 0) (by omega)
-    rw [if_neg q7]
-    by_cases q8 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 - 4 - 4 < 4
-    · rw [if_pos q8, ctr 3 (by norm_num) (by omega) (by omega)]
-      exact congrArg (fun j => (sigCounterBytes sig 3).getD j 0) (by omega)
-    rw [if_neg q8, ctr 4 (by norm_num) (by omega) (by omega)]
-    exact congrArg (fun j => (sigCounterBytes sig 4).getD j 0) (by omega)
-  have hU : unpackF (applyCopies copyRest g) (0x800 + i) = applyCopies copyRest g (0x800 + i) := by
-    unfold unpackF; rw [if_neg (by omega)]
-  rw [hU]
   -- a copied region: `x = 0x800 + i` in `[dst, dst + 4 n)` reads `sig[x - dst + src - 0x3300]`
   have cp : ∀ c ∈ copyRest, c.2.1 ≤ 0x800 + i → 0x800 + i < c.2.1 + 4 * c.2.2 → 0x3300 ≤ c.1 →
-      c.1 + 4 * c.2.2 ≤ 0x3300 + 6094 →
+      c.1 + 4 * c.2.2 ≤ 0x3300 + 6068 →
       applyCopies copyRest g (0x800 + i) = sig.getD (0x800 + i - c.2.1 + c.1 - 0x3300) 0 := by
     intro c hc h1 h2 h3 h4
     rw [copy_hit g c hc _ h1 h2]
@@ -249,26 +163,51 @@ theorem witness_bytes (sig : List Byte) (hsig : sig.length = 6094) (N : Nat) (A 
     · rw [getD_zeros, getD_zeros]
   rw [if_neg r4]
   by_cases q0 : i - 16 - 15 - 1 - 240 - 2152 < 848
-  · rw [if_pos q0, cp (0x3B80, 0x1178, 212) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q0, cp (0x3B64, 0x1178, 212) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q0]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q0]
   by_cases q1 : i - 16 - 15 - 1 - 240 - 2152 - 848 < 768
-  · rw [if_pos q1, cp (0x3ED0, 0x14C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q1, cp (0x3EB8, 0x14C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q1]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q1]
   by_cases q2 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 < 768
-  · rw [if_pos q2, cp (0x41D0, 0x17C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q2, cp (0x41BC, 0x17C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q2]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q2]
   by_cases q3 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 < 768
-  · rw [if_pos q3, cp (0x44D0, 0x1AC8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q3, cp (0x44C0, 0x1AC8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q3]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q3]
-  rw [if_pos (by omega), cp (0x47D0, 0x1DC8, 188) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  by_cases q4 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 < 752
+  · rw [if_pos q4, cp (0x47C4, 0x1DC8, 188) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+      getD_slice' _ _ _ _ q4]
+    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
+  rw [if_neg q4]
+  by_cases q5 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 < 4
+  · rw [if_pos q5, cp (0x3B60, 0x20B8, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+      getD_slice' _ _ _ _ q5]
+    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
+  rw [if_neg q5]
+  by_cases q6 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 < 4
+  · rw [if_pos q6, cp (0x3EB4, 0x20BC, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+      getD_slice' _ _ _ _ q6]
+    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
+  rw [if_neg q6]
+  by_cases q7 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 - 4 < 4
+  · rw [if_pos q7, cp (0x41B8, 0x20C0, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+      getD_slice' _ _ _ _ q7]
+    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
+  rw [if_neg q7]
+  by_cases q8 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 - 4 - 4 < 4
+  · rw [if_pos q8, cp (0x44BC, 0x20C4, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+      getD_slice' _ _ _ _ q8]
+    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
+  rw [if_neg q8]
+  rw [cp (0x47C0, 0x20C8, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
     getD_slice' _ _ _ _ (by omega)]
   exact congrArg (fun j => sig.getD j 0) (by simp; omega)
 

@@ -259,8 +259,8 @@ theorem swS_eq (h0 : dA s < 2 ^ 63) (h1 : dB s < 2 ^ 63) :
   have hl : swarOf (dA s) (dB s) < 4096 := Nat.mod_lt _ (by decide)
   rw [← hs]
   change _ ↔ swarOf (dA s) (dB s) = targetSum
-  have hK : KT = BitVec.ofNat 64 (182 * 2 ^ 52) := rfl
-  rw [hK, show targetSum = 182 from rfl]
+  have hK : KT = BitVec.ofNat 64 (180 * 2 ^ 52) := rfl
+  rw [hK, show targetSum = 180 from rfl]
   constructor
   · intro h
     have := congrArg BitVec.toNat h

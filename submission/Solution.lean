@@ -4,8 +4,8 @@ import SigGolfCandidate.Transfer.Final
 /-!
 # sig.golf solution: SPHINCS+ with PORS+FP (forced-pruning single-tree few-time signature)
 
-`S = 6094` bytes, `W = 6348` bytes, `K = 131072` bytes (cache), `C = 11907` cycles (verify bound
-`11882` plus the witness charge `⌈6348 / 256⌉ = 25`). Layout (bytes): message 64, secret key 128,
+`S = 6068` bytes, `W = 6348` bytes, `K = 131072` bytes (cache), `C = 11763` cycles (verify bound
+`11738` plus the witness charge `⌈6348 / 256⌉ = 25`). Layout (bytes): message 64, secret key 128,
 public key 160, cache 19200, signature 13056, witness 2048.
 
 The certificate is `SigGolfCandidate.certificateNew`. It is transferred from
@@ -23,7 +23,7 @@ namespace SigGolf.Challenge
 
 def submission : SigGolf.Submission := SigGolfCandidate.submissionNew
 
-theorem signature_bytes : submission.sizes.signature = 6094 := rfl
+theorem signature_bytes : submission.sizes.signature = 6068 := rfl
 
 theorem witness_bytes : submission.sizes.witness = 6348 := rfl
 
@@ -33,7 +33,7 @@ theorem layout_offsets : submission.layout =
   { message := 64, secretKey := 128, publicKey := 160,
     cache := 19200, signature := 13056, witness := 2048 } := rfl
 
-theorem certificate : SigGolf.Certificate submission 11907 :=
+theorem certificate : SigGolf.Certificate submission 11763 :=
   SigGolfCandidate.certificateNew
 
 end SigGolf.Challenge

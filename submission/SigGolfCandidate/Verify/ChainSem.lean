@@ -63,7 +63,8 @@ def HeadInv (c : CCtx) (i : Nat) (acc : List Val) (s : MachineState) : Prop :=
   (i < 42 → hasPrep i = false → s.getReg .x14 = BitVec.ofNat 64 (rOf c i))
 
 def RB (c : CCtx) (i : Nat) (s : MachineState) : Prop :=
-  s.getReg .x15 = BitVec.ofNat 64 (bVal c.lay i) ∧ s.getReg .x14 = BitVec.ofNat 64 (rOf c i)
+  s.getReg .x15 = BitVec.ofNat 64 (bVal c.lay i) ∧ s.getReg .x14 = BitVec.ofNat 64 (rOf c i) ∧
+  (1 ≤ i → i < 41 → s.getReg .x4 = linkPc c.lay i)
 
 /-- At the table entry of chain `i`, with the chain value loaded. -/
 def EntInv (c : CCtx) (i : Nat) (acc : List Val) (s : MachineState) : Prop :=
@@ -248,8 +249,13 @@ theorem Regs_keep {c : CCtx} {r : PRes} {s : MachineState} (hR : c.Regs s)
 
 theorem RB_keep {c : CCtx} {i : Nat} {r : PRes} {s : MachineState} (hB : RB c i s)
     (hkeep : ∀ x ∈ ckeep, (r.toState s).getReg x = s.getReg x) : RB c i (r.toState s) := by
-  obtain ⟨h1, h2⟩ := hB
-  refine ⟨?_, ?_⟩ <;> (rw [hkeep _ (by simp [ckeep])]; assumption)
+  obtain ⟨h1, h2, h4⟩ := hB
+  refine ⟨?_, ?_, ?_⟩
+  · rw [hkeep _ (by simp [ckeep])]; exact h1
+  · rw [hkeep _ (by simp [ckeep])]; exact h2
+  · intro hi1 hi
+    rw [hkeep _ (by simp [ckeep])]
+    exact h4 hi1 hi
 
 theorem Regs_wh {c : CCtx} {s : MachineState} (hR : c.Regs s) (a : BitVec 256) :
     c.Regs (writeHash s a) := by

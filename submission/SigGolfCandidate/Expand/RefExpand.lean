@@ -11,7 +11,7 @@ set_option linter.unusedVariables false
 namespace SigGolfCandidate.Expand
 open SigGolfCandidate.Legacy SigGolfCandidate.Ref
 
-theorem sigAuth_zero_iff (sig : List Byte) (hsig : sig.length = 6094) (i : Nat) (hi : i < 120) :
+theorem sigAuth_zero_iff (sig : List Byte) (hsig : sig.length = 6068) (i : Nat) (hi : i < 118) :
     sigAuth sig i = zeros 16 ↔ ∀ k < 16, sig.getD (256 + 16 * i + k) 0 = 0 := by
   have hl := length_sigAuth sig hsig i hi
   constructor
@@ -23,7 +23,7 @@ theorem sigAuth_zero_iff (sig : List Byte) (hsig : sig.length = 6094) (i : Nat) 
     rw [← getD_sigAuth sig hsig i k hi (by omega), List.getD_eq_getElem _ _ h1] at this
     rw [this]; exact (List.getElem_replicate _).symm
 
-theorem all_iff_padOK (sig : List Byte) (hsig : sig.length = 6094) (n : Nat) (hn : n ≤ 120) :
+theorem all_iff_padOK (sig : List Byte) (hsig : sig.length = 6068) (n : Nat) (hn : n ≤ 118) :
     (List.range' n (porsM - n)).all (fun i => sigAuth sig i == zeros 16) = true ↔ PadOK sig n := by
   rw [List.all_eq_true]
   simp only [List.mem_range', beq_iff_eq, porsM]
@@ -37,25 +37,15 @@ theorem all_iff_padOK (sig : List Byte) (hsig : sig.length = 6094) (n : Nat) (hn
     intro k' hk'
     exact h _ (by omega) (by omega)
 
-theorem expandOf_spare {sig : List Byte} {N : Nat} (h : ¬ SpareOK sig) : expandOf sig N = none := by
-  unfold expandOf SpareOK at *
-  dsimp only
-  by_cases h1 : (leavesOf N).Nodup
-  · rw [if_neg (by simp [h1]), if_pos (by omega)]
-  · rw [if_pos (by simp [h1])]
-
 theorem expandOf_none {sig : List Byte} {N : Nat}
     (h : ¬ ((leavesOf N).Nodup ∧ octopusSize (sortLeaves (leavesOf N)) ≤ porsM)) : expandOf sig N = none := by
-  by_cases h0 : SpareOK sig
-  · unfold expandOf
-    dsimp only
-    unfold SpareOK at h0
-    by_cases h1 : (leavesOf N).Nodup
-    · rw [if_neg (by simp [h1]), if_neg (by omega), if_pos (Nat.lt_of_not_le fun h2 => h ⟨h1, h2⟩)]
-    · rw [if_pos (by simp [h1])]
-  · exact expandOf_spare h0
+  unfold expandOf
+  dsimp only
+  by_cases h1 : (leavesOf N).Nodup
+  · rw [if_neg (by simp [h1]), if_pos (Nat.lt_of_not_le fun h2 => h ⟨h1, h2⟩)]
+  · rw [if_pos (by simp [h1])]
 
-theorem expandOf_eq {sig : List Byte} {N : Nat} (h0 : SpareOK sig) (h1 : (leavesOf N).Nodup)
+theorem expandOf_eq {sig : List Byte} {N : Nat} (h1 : (leavesOf N).Nodup)
     (h2 : octopusSize (sortLeaves (leavesOf N)) ≤ porsM) :
     expandOf sig N =
       if (List.range' (schedule (sortLeaves (leavesOf N))).2.length
@@ -64,8 +54,7 @@ theorem expandOf_eq {sig : List Byte} {N : Nat} (h0 : SpareOK sig) (h1 : (leaves
       else none := by
   unfold expandOf
   dsimp only
-  unfold SpareOK at h0
-  rw [if_neg (by simp [h1]), if_neg (by omega), if_neg (by omega)]
+  rw [if_neg (by simp [h1]), if_neg (by omega)]
   generalize schedule (sortLeaves (leavesOf N)) = p
   obtain ⟨segs, reads⟩ := p
   dsimp only

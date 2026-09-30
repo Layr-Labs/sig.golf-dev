@@ -31,7 +31,7 @@ def counterBits : Nat := 32
 def winternitzBits : Nat := 3
 def chainLength : Nat := 2 ^ winternitzBits
 def numChains : Nat := 42
-def targetSum : Nat := 182
+def targetSum : Nat := 180
 def numLayers : Nat := 5
 def totalHeight : Nat := 34
 /-- The tallest layer, the top one, `h_0 = 11`, which bounds every layer's leaf index. -/
@@ -42,7 +42,7 @@ def ftsTreeHeight : Nat := 14
 def ftsOpenings : Nat := 15
 /-- The authentication-node budget: an admissible digest's octopus has at most `120` nodes, and the verifier
 accepts at most `120` folds. -/
-def ftsAuthCapacity : Nat := 120
+def ftsAuthCapacity : Nat := 118
 /-- The verifier's segments: one per opened leaf and one per merge, `2k - 1 = 29`. -/
 def ftsSegments : Nat := 2 * ftsOpenings - 1
 /-- Signatures allowed per key pair, `q_s`. -/

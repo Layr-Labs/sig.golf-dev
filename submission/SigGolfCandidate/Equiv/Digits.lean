@@ -183,7 +183,7 @@ theorem admissible_eq (d : MessageDigest) :
     exact ⟨fun h a b e => h (congrArg Fin.val e), fun h a b e => h (Fin.ext e)⟩
   by_cases h1 : Function.Injective (SphincsSecurity.Concrete.digestLeaves d) <;>
     by_cases h2 : SphincsSecurity.Concrete.octopusSize
-      (SphincsSecurity.Concrete.sortedLeaves (SphincsSecurity.Concrete.digestLeaves d)) ≤ 120 <;>
+      (SphincsSecurity.Concrete.sortedLeaves (SphincsSecurity.Concrete.digestLeaves d)) ≤ 118 <;>
     simp [hn, h1, h2, Ref.porsM, SphincsSecurity.ftsAuthCapacity]
 
 end SigGolfCandidate.Equiv

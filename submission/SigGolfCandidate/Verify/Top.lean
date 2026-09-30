@@ -7,20 +7,19 @@ set_option linter.unusedSimpArgs false
 namespace SigGolfCandidate.Verify
 open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
 
-/-- The cycle bound of accepting runs: `9784 + 17 · 120 + 2 · 29` (every accepting run costs
-exactly `9784 + 17 F + 2 G`, `F ≤ 120` the total folds, `G ≤ 29` the segments with `a ≥ 1`). -/
-def cycleBound : Nat := 11882
+/-- The cycle bound of accepting runs after saving 40 head instructions in each of five layers. -/
+def cycleBound : Nat := 11738
 
 /-- A cycle bound of every run (`256` per segment instead of `16` / `18 + 17 a`). -/
-def cycleBoundAll : Nat := 16744
+def cycleBoundAll : Nat := 16834
 
 /-- A step bound (fuel) sufficient for every run. -/
 def fuelBound : Nat := 45000
 
 def Kb : Bool → OracleComp HashSpec Obs := fun b => pure (b, 0)
 
-theorem layersCost_val : layersCost 5 = 8846 := by decide
-theorem layC_val : layC = 8846 := by unfold layC; exact layersCost_val
+theorem layersCost_val : layersCost 5 = 8736 := by decide
+theorem layC_val : layC = 8736 := by unfold layC; exact layersCost_val
 
 theorem tail_eq (pk : List Byte) (w : List Byte) (idx : Nat) (M : Val) :
     cc (do
@@ -54,19 +53,19 @@ theorem Kr_none (P : PCtx) : Kr P none = pure (false, 0) := by
 
 theorem root_good (P : PCtx) (hP : P.ok) (s0 : MachineState) (x c : Nat) (st : PorsState)
     (u : MachineState) (hT : TailIn P s0 14 x 2 c st.ptr st.E st.folds st.node st.stack u) :
-    GoodQ u (22 + layC + layN) (22 + layC) (st.folds ≤ 120) (22 + layC) (Kr P (some st)) := by
+    GoodQ u (22 + layC + layN) (22 + layC) (st.folds ≤ 118) (22 + layC) (Kr P (some st)) := by
   obtain ⟨hrej, hacc⟩ := tailF_step P hP s0 x c st.ptr st.E st.folds st.node st.stack u hT
   have hL : layC = layersCost 5 := by unfold layC; rfl
   by_cases hc : st.folds > porsM ∨ st.E ≠ 1 ∨ st.stack ≠ []
   · simp only [Kr, if_pos hc, cc_pure, Klay, Kb]
     obtain ⟨v, k, hk, hst, hf, h5, h10⟩ := hrej hc
-    exact GoodQ.steps' hst (GoodQ.reject (Q := st.folds ≤ 120) (A := 0) hf h5 h10) (by omega) (by omega)
+    exact GoodQ.steps' hst (GoodQ.reject (Q := st.folds ≤ 118) (A := 0) hf h5 h10) (by omega) (by omega)
       (fun q => ⟨q, by omega⟩)
   · simp only [Kr, if_neg hc, cc_pure, Klay]
     obtain ⟨v, hst, hL4⟩ := hacc hc
     rw [tail_eq]
     have hg := layers_good P.wl P.pk hP.2 P.idx P.idx_lt hP.1 5 (le_refl _) st.node v hL4
-    have hfolds : st.folds ≤ 120 := by simp only [porsM] at hc; omega
+    have hfolds : st.folds ≤ 118 := by simp only [porsM] at hc; omega
     exact GoodQ.steps' hst hg.toQ (by unfold layN; omega) (by rw [hL]; omega) (fun _ => ⟨hfolds, by rw [hL]; omega⟩)
 
 /-- The PORS part: from the leaf-0 state after the setup to the verdict. -/
@@ -76,7 +75,7 @@ theorem pors_good (P : PCtx) (hP : P.ok) (s0 : MachineState)
       (cc (porsRoot P.idx P.v P.wl) (Klay P)) := by
   have hr : ∀ (x c : Nat) (st : PorsState) (u : MachineState),
       TailIn P s0 14 x 2 c st.ptr st.E st.folds st.node st.stack u →
-      GoodQ u (22 + layC + layN) (22 + layC) (st.folds ≤ 120) (22 + layC) (Kr P (some st)) :=
+      GoodQ u (22 + layC + layN) (22 + layC) (st.folds ≤ 118) (22 + layC) (Kr P (some st)) :=
     fun x c st u hT => root_good P hP s0 x c st u hT
   have hg0 := leaves_good P hP s0 (Kr P) (Kr_none P) hr
   have hg := hg0 15 0 ⟨wStream, 0, 0, 0, [], []⟩ s0 (by rfl) h
@@ -93,7 +92,7 @@ theorem pors_good (P : PCtx) (hP : P.ok) (s0 : MachineState)
 
 theorem lrest_0 : lrest 0 = 158 := by decide
 
-theorem cost_vals : leafCost 0 + Cseg 0 0 = 7754 + layC ∧ leafCost 0 + Aseg 0 0 0 = 2892 + layC ∧
+theorem cost_vals : leafCost 0 + Cseg 0 0 = 7754 + layC ∧ leafCost 0 + Aseg 0 0 0 = 2858 + layC ∧
     leafCost 0 + Nseg 0 0 = 7754 + layC + layN := by
   have h0 : leafCost 0 = 10 := rfl
   refine ⟨?_, ?_, ?_⟩ <;> simp only [Cseg, Aseg, Nseg, segR, lrest_0, h0] <;> omega
