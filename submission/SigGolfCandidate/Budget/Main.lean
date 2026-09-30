@@ -12,9 +12,7 @@ reference spec satisfies the organizer's `CompressionBounds`. The hypotheses are
   `G` of the public key;
 * sign: `hashCompressions` is `countBlocks (signRef sk cache m)`'s count, for every cache input
   (the bound holds for every cache, in particular the honest one from keygen);
-* expand: `hashCompressions` is the compression count of a computation with at most one
-  compression on every path (for the submission: `expandRef`, whose only query is the one-block
-  digest; `2^(1/2^20) ≤ 2`).
+* expand: `hashCompressions` is `0`.
 
 These follow from bytecode refinement theorems of the form
 `(fun r => (r.value, r.hashCalls, r.hashCompressions)) <$> submission.run phase input = ...` by
@@ -153,11 +151,9 @@ def SignRefines (hc : sub.sizes.cache = CACHE_BYTES) : Prop :=
   ∀ sk cache m, (fun r => r.hashCompressions) <$> sub.run .sign (sk, cache, m) =
     Prod.snd <$> countBlocks (signRef sk (refCache hc cache) m)
 
-/-- The expand refinement hypothesis (compressions): for every input, expand's compressions are
-those of a computation `oa` with at most one compression on every path. -/
-def ExpandOneBlock : Prop :=
-  ∀ input, ∃ (α : Type) (oa : OracleComp HashSpec α), Spec (fun _ => True) (fun _ => True) 1 oa ∧
-    (fun r => r.hashCompressions) <$> sub.run .expand input = Prod.snd <$> countBlocks oa
+/-- Expand makes no hash calls. -/
+def ExpandNoHash : Prop :=
+  ∀ input, (fun r => r.hashCompressions) <$> sub.run .expand input = pure 0
 
 theorem keygen_count (hK : KeygenRefines sub) (sk : SecretKey) :
     (fun r => r.hashCompressions) <$> sub.run .keygen sk = Prod.snd <$> countBlocks (keygenRef sk) := by
@@ -235,19 +231,10 @@ theorem sign_bound (hK : KeygenRefines sub) (hc : sub.sizes.cache = CACHE_BYTES)
     simp only [recordCost, show Phase.sign ≠ Phase.keygen by decide, if_false]
     rw [ofReal_rpow_zero]; norm_num
 
-/-- `2 ^ (1 / 2^20) ≤ 2`. -/
-theorem zOf_le_two : zOf (2 ^ 20) ≤ 2 := by
-  unfold zOf
-  rw [show (2 : ℝ≥0∞) = ENNReal.ofReal 2 by simp]
-  refine ENNReal.ofReal_le_ofReal ?_
-  calc (2 : ℝ) ^ (1 / ((2 ^ 20 : Nat) : ℝ)) ≤ (2 : ℝ) ^ (1 : ℝ) :=
-        Real.rpow_le_rpow_of_exponent_le (by norm_num) (by norm_num)
-    _ = 2 := Real.rpow_one 2
-
-theorem expand_bound (hE : ExpandOneBlock sub) (sk : SecretKey) (m : Message) :
+theorem expand_bound (hE : ExpandNoHash sub) (sk : SecretKey) (m : Message) :
     expectedValue (withRandomOracle (sub.honest sk m)) (fun result => ENNReal.ofReal
       (Real.rpow 2 ((result.costs .expand : ℝ) / (Phase.expand.budget : ℝ)))) ≤ 2 := by
-  have h12 : (1 : ℝ≥0∞) ≤ 2 := by norm_num
+  refine le_trans ?_ (show (1 : ℝ≥0∞) ≤ 2 by norm_num)
   rw [ev_withRandomOracle, honest_eq, roRun_bind, expectedValue_bind]
   refine expectedValue_le_of_support fun x _ => ?_
   obtain ⟨k, c⟩ := x
@@ -279,22 +266,22 @@ theorem expand_bound (hE : ExpandOneBlock sub) (sk : SecretKey) (m : Message) :
         _ = expectedValue (roRun ((fun r => r.hashCompressions) <$> sub.run .expand (m, pk, sig)) c')
               (fun y => zOf (2 ^ 20) ^ y.1) := by
             rw [roRun_map, expectedValue_map]
-        _ ≤ 2 := by
-            obtain ⟨α, oa, hspec, h⟩ := hE (m, pk, sig)
-            erw [h, ev_count_eq_V]
-            exact ((hspec.V_le (one_le_zOf _) c').trans_eq (pow_one _)).trans zOf_le_two
+        _ ≤ 1 := by
+            have h := hE (m, pk, sig)
+            erw [h]
+            rw [roRun_pure, expectedValue_pure]; simp
     · simp only [roRun_pure, expectedValue_pure]
       simp only [recordCost, show Phase.expand ≠ Phase.sign by decide,
         show Phase.expand ≠ Phase.keygen by decide, if_false]
-      rw [ofReal_rpow_zero]; exact h12
+      rw [ofReal_rpow_zero]
   · simp only [roRun_pure, expectedValue_pure]
     simp only [recordCost, show Phase.expand ≠ Phase.keygen by decide, if_false]
-    rw [ofReal_rpow_zero]; exact h12
+    rw [ofReal_rpow_zero]
 
 /-- **Compression bounds** for any submission refining the reference spec. -/
 theorem compressionBounds_of_refinement (hK : KeygenRefines sub)
     (hc : sub.sizes.cache = CACHE_BYTES) (hS : SignRefines sub hc)
-    (hE : ExpandOneBlock sub) : sub.CompressionBounds := by
+    (hE : ExpandNoHash sub) : sub.CompressionBounds := by
   intro sk phase hphase
   unfold Submission.honestWorkload
   refine expectedValue_bind_le_of_le fun m => ?_
@@ -307,8 +294,8 @@ theorem compressionBounds_of_refinement (hK : KeygenRefines sub)
 end Phases
 
 /-- The competition statement for `SigGolfCandidate.submission`, modulo the refinement facts. -/
-theorem submission_compressionBounds_of_refines (hK : KeygenRefines submission)
-    (hS : SignRefines submission rfl) (hE : ExpandOneBlock submission) :
+theorem submission_compressionBounds (hK : KeygenRefines submission)
+    (hS : SignRefines submission rfl) (hE : ExpandNoHash submission) :
     submission.CompressionBounds :=
   compressionBounds_of_refinement submission hK rfl hS hE
 

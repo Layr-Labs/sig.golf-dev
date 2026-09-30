@@ -1,7 +1,6 @@
 import SigGolfCandidate.SphincsSecurity.Proof.Base.Prelude
 import SigGolfCandidate.SphincsSecurity.Proof.Hypertree.FrontierSigningEvaluation
 import SigGolfCandidate.SphincsSecurity.Proof.Hypertree.FrontierTreeEvaluation
-import SigGolfCandidate.SphincsSecurity.Proof.Scheme.SignSupport
 namespace SphincsSecurity.Concrete
 
 open _root_.OracleComp OracleSpec
@@ -125,7 +124,8 @@ def frontierSignAfterDigest (parameter : PublicParameter) (f : QueryImpl HashSpe
   let paths := evalWithAnswerFn f (ftsOpen parameter index leaves (ftsSecret index))
   ((sequenceFin (m := Option) (fun lay => (layers lay).1)).map (fun parts =>
       { randomness := randomness
-        fts := paths
+        ftsSecret := fun tree => ftsSecret index tree (leaves (ftsIndexOf tree))
+        ftsPath := paths
         layers := fun lay => LayerSignature.ofPadded lay (parts lay) }),
     ftsOpenHashCost + sequenceLayersHashCost layers)
 
