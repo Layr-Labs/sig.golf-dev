@@ -35,7 +35,7 @@ theorem Concrete.probEvent_signAttempt_fresh_success_eq
     Pr[fun result => result.1 ≠ none |
       (simulateQ (randomOracle : QueryImpl HashSpec _)
         (signAttempt secretKey message randomness)).run cache] =
-      admissibleProbability := by
+      ((2 ^ ftsTreeHeight : Nat) : ℝ≥0∞)⁻¹ := by
   have hcoordinates := evalDist_signAttempt_fresh_bind_coordinates
     secretKey message randomness cache hcache
     (fun result => pure result)
@@ -50,6 +50,7 @@ theorem Concrete.probEvent_signAttempt_fresh_success_eq
               (messageDigestPayload secretKey.root message randomness))
             (hashOutputCoordinatesEquiv.symm coordinates))] = _
   rw [probEvent_bind_pure_comp]
+  let event : HashOutputCoordinates → Prop := fun coordinates => coordinates.1.2 = 0
   calc
     Pr[fun coordinates : HashOutputCoordinates =>
         (signAttemptResultOfOutput (hashOutputCoordinatesEquiv.symm coordinates),
@@ -58,20 +59,25 @@ theorem Concrete.probEvent_signAttempt_fresh_success_eq
               (messageDigestPayload secretKey.root message randomness))
             (hashOutputCoordinatesEquiv.symm coordinates)).1 ≠ none |
         ($ᵗ HashOutputCoordinates : ProbComp HashOutputCoordinates)] =
-        Pr[fun output : HashOutput => signAttemptResultOfOutput output ≠ none ∧ True |
-          hashOutputCoordinatesEquiv.symm <$> ($ᵗ HashOutputCoordinates : ProbComp HashOutputCoordinates)] := by
+        Pr[event | ($ᵗ HashOutputCoordinates : ProbComp HashOutputCoordinates)] := by
+      apply probEvent_congr'
+      · intro coordinates _
+        exact signAttemptResultOfOutput_coordinates_ne_none_iff coordinates
+      · rfl
+    _ = Pr[fun coordinates : FewTimeView × FtsLeaf => coordinates.2 = 0 |
+        Prod.fst <$> ($ᵗ HashOutputCoordinates : ProbComp HashOutputCoordinates)] := by
       rw [probEvent_map]
-      simp only [and_true]
       rfl
-    _ = Pr[fun output : HashOutput => signAttemptResultOfOutput output ≠ none ∧ True |
-          ($ᵗ HashOutput : ProbComp HashOutput)] :=
-      probEvent_congr' (fun _ _ => Iff.rfl)
-        (evalSPMF_map_bijective_uniform_cross (α := HashOutputCoordinates) (β := HashOutput)
-          hashOutputCoordinatesEquiv.symm hashOutputCoordinatesEquiv.symm.bijective)
+    _ = Pr[fun coordinates : FewTimeView × FtsLeaf => coordinates.2 = 0 |
+        ($ᵗ (FewTimeView × FtsLeaf) : ProbComp (FewTimeView × FtsLeaf))] := by
+      apply probEvent_congr'
+      · intro coordinates _
+        rfl
+      · exact evalSPMF_map_fst_uniformSample_prod
     _ = _ := by
-      rw [probEvent_uniformHashOutput_admissible_view (fun _ => True)]
-      simp only [probEvent_True_eq_sub, probFailure_of_liftM_PMF, tsub_zero]
-      rw [mul_one]
+      simpa only [and_true, probEvent_True_eq_sub, probFailure_of_liftM_PMF,
+        tsub_zero, mul_one] using
+        probEvent_uniformDigestCoordinates_admissible_view (fun _ => True)
 
 noncomputable def Concrete.signDigestAttemptPrefix
     (secretKey : SecretKey) (message : Message) (cache : QueryCache HashSpec) :
