@@ -30,6 +30,39 @@ theorem leNat_lt (l : List Byte) : leNat l < 256 ^ l.length := by
     simp only [Nat.reducePow] at this
     nlinarith
 
+theorem leNat_append (xs ys : List Byte) :
+    leNat (xs ++ ys) = leNat xs + 256 ^ xs.length * leNat ys := by
+  induction xs with
+  | nil => simp [leNat]
+  | cons b bs ih =>
+    simp only [List.cons_append, leNat, List.length_cons, Nat.pow_succ, ih]
+    ring
+
+theorem leBytes_append (n m v : Nat) :
+    leBytes (n + m) v = leBytes n v ++ leBytes m (v / 256 ^ n) := by
+  unfold leBytes
+  rw [List.range_add, List.map_append, List.map_map]
+  congr 1
+  apply List.map_congr_left
+  intro i _
+  simp only [Function.comp_apply]
+  rw [Nat.pow_add, Nat.div_div_eq_div_mul]
+
+theorem leBytes_take (n m v : Nat) (h : n ≤ m) :
+    (leBytes m v).take n = leBytes n v := by
+  unfold leBytes
+  rw [← List.map_take, List.take_range, Nat.min_eq_left h]
+
+theorem leNat_split8 (l : List Byte) (hlen : 8 ≤ l.length) :
+    leNat l = leNat (l.take 8) + 2 ^ 64 * leNat (l.drop 8) := by
+  calc
+    leNat l = leNat (l.take 8 ++ l.drop 8) := by rw [List.take_append_drop]
+    _ = leNat (l.take 8) + 256 ^ (l.take 8).length * leNat (l.drop 8) :=
+      leNat_append _ _
+    _ = leNat (l.take 8) + 2 ^ 64 * leNat (l.drop 8) := by
+      rw [List.length_take, Nat.min_eq_left hlen]
+      norm_num
+
 theorem leNat_map_range (n v : Nat) :
     leNat ((List.range n).map fun i => byte (v / 256 ^ i)) = v % 256 ^ n := by
   induction n generalizing v with
@@ -55,6 +88,41 @@ theorem leNat_div_mod (l : List Byte) (i : Nat) :
       rw [show (b.toNat + 256 * leNat bs) / 256 = leNat bs by simp at hb; omega]
       exact ih i
 
+/-- Canonical 14-byte tails have exactly 110 usable bits. -/
+theorem canonicalTail_value_lt (tail : List Byte)
+    (h : CounterPack.canonicalTail tail = true) :
+    leNat tail < CounterPack.radix ^ nLayers := by
+  obtain ⟨hlen, hhigh⟩ := (CounterPack.canonicalTail_iff tail).mp h
+  have hlen14 : tail.length = 14 := by simpa [CounterPack.tailBytes] using hlen
+  have hlimit := leNat_lt tail
+  rw [hlen14] at hlimit
+  have hdiv : leNat tail / 256 ^ 13 < 256 := by
+    norm_num at hlimit ⊢
+    omega
+  have hlast := leNat_div_mod tail 13
+  rw [Nat.mod_eq_of_lt hdiv] at hlast
+  change leNat tail < (2 ^ 22) ^ 5
+  norm_num only [Nat.reducePow] at hlast ⊢
+  omega
+
+/-- For a fourteen-byte tail, the high-bit check is exactly the 110-bit value bound. -/
+theorem canonicalTail_iff_value_lt (tail : List Byte) (hlen : tail.length = 14) :
+    CounterPack.canonicalTail tail = true ↔
+      leNat tail < CounterPack.radix ^ nLayers := by
+  constructor
+  · exact canonicalTail_value_lt tail
+  · intro hv
+    apply (CounterPack.canonicalTail_iff tail).mpr
+    constructor
+    · simpa [CounterPack.tailBytes] using hlen
+    · have hquot : leNat tail / 256 ^ 13 < 64 := by
+        norm_num [CounterPack.radix, CounterPack.counterBits, nLayers] at hv ⊢
+        omega
+      have hlast := leNat_div_mod tail 13
+      rw [Nat.mod_eq_of_lt (by omega : leNat tail / 256 ^ 13 < 256)] at hlast
+      rw [← hlast]
+      exact hquot
+
 theorem extractByte_ofNat (w v i : Nat) (h : 8 * i + 8 ≤ w) :
     (BitVec.ofNat w v).extractLsb' (8 * i) 8 = byte (v / 256 ^ i) := by
   apply BitVec.eq_of_toNat_eq
@@ -62,6 +130,21 @@ theorem extractByte_ofNat (w v i : Nat) (h : 8 * i + 8 ≤ w) :
   rw [show (256 : Nat) ^ i = 2 ^ (8 * i) by rw [Nat.pow_mul]]
   rw [show w = 8 * i + (w - 8 * i) by omega, Nat.pow_add, Nat.mod_mul_right_div_self,
     Nat.mod_mod_of_dvd _ (Nat.pow_dvd_pow 2 (by omega))]
+
+/-- Extracting the bytes of a natural number agrees with the reference
+little-endian encoder, including values wider than the requested output. -/
+theorem toList_ofNat_eq_leBytes (n v : Nat) :
+    toList (BitVec.ofNat (8 * n) v) = leBytes n v := by
+  unfold toList SigGolfCandidate.Legacy.bytes leBytes
+  apply List.map_congr_left
+  intro i hi
+  rw [List.mem_range] at hi
+  exact extractByte_ofNat (8 * n) v i (by omega)
+
+theorem packTail_eq_leBytes (cs : List Nat) :
+    CounterPack.packTail cs = leBytes 14 (CounterPack.packDigits cs) := by
+  simpa only [CounterPack.packTail] using
+    toList_ofNat_eq_leBytes 14 (CounterPack.packDigits cs)
 
 theorem toList_ofList (n : Nat) (l : List Byte) (h : l.length = n) : toList (ofList n l) = l := by
   subst h
@@ -89,6 +172,60 @@ theorem leNat_toList {n : Nat} (x : Bytes n) : leNat (toList x) = x.toNat := by
 theorem ofList_toList {n : Nat} (x : Bytes n) : ofList n (toList x) = x := by
   apply BitVec.eq_of_toNat_eq
   simp [ofList, leNat_toList]
+
+/-- Every accepted packed counter tail survives decode and canonical re-encoding. -/
+theorem canonicalTail_roundtrip (tail : List Byte)
+    (h : CounterPack.canonicalTail tail = true) :
+    CounterPack.packTail (CounterPack.unpackTail tail) = tail := by
+  have hlen : tail.length = 14 := by
+    have hh := (CounterPack.canonicalTail_iff tail).mp h
+    simpa [CounterPack.tailBytes] using hh.1
+  have hv := canonicalTail_value_lt tail h
+  have hpow : CounterPack.radix ^ nLayers = 2 ^ 110 := by
+    norm_num [CounterPack.radix, CounterPack.counterBits, nLayers]
+  have hv' : CounterPack.tailValue tail < 2 ^ 110 := by
+    simpa [CounterPack.tailValue, hpow] using hv
+  unfold CounterPack.packTail
+  rw [CounterPack.packDigits_unpackTail, hpow, Nat.mod_eq_of_lt hv']
+  change toList (ofList 14 tail) = tail
+  exact toList_ofList 14 tail hlen
+
+/-- Every five bounded counters produce a canonical packed tail. -/
+theorem canonicalTail_packTail (cs : List Nat) (hlen : cs.length = nLayers)
+    (hcs : ∀ c ∈ cs, c < CounterPack.radix) :
+    CounterPack.canonicalTail (CounterPack.packTail cs) = true := by
+  apply (CounterPack.canonicalTail_iff _).mpr
+  constructor
+  · exact CounterPack.length_packTail cs
+  · have hv : CounterPack.packDigits cs < 2 ^ 110 := by
+      have hb := CounterPack.packDigits_lt_pow cs hcs
+      rw [hlen] at hb
+      simpa [CounterPack.radix, CounterPack.counterBits, nLayers] using hb
+    have hv112 : CounterPack.packDigits cs < 2 ^ 112 := by omega
+    have hvalue : leNat (CounterPack.packTail cs) = CounterPack.packDigits cs := by
+      simp only [CounterPack.packTail, leNat_toList, BitVec.toNat_ofNat]
+      exact Nat.mod_eq_of_lt hv112
+    have hquot : CounterPack.packDigits cs / 256 ^ 13 < 64 := by
+      norm_num at hv ⊢
+      omega
+    have hlast := leNat_div_mod (CounterPack.packTail cs) 13
+    rw [hvalue, Nat.mod_eq_of_lt (by omega : CounterPack.packDigits cs / 256 ^ 13 < 256)] at hlast
+    rw [← hlast]
+    exact hquot
+
+/-- Packing and decoding five in-range counters preserves every digit. -/
+theorem unpackTail_packTail (cs : List Nat) (hlen : cs.length = nLayers)
+    (hcs : ∀ c ∈ cs, c < CounterPack.radix) :
+    CounterPack.unpackTail (CounterPack.packTail cs) = cs := by
+  have hb := CounterPack.packDigits_lt_pow cs hcs
+  rw [hlen] at hb
+  have hbits : CounterPack.packDigits cs < 2 ^ (8 * 14) := by
+    norm_num [CounterPack.radix, CounterPack.counterBits, nLayers] at hb ⊢
+    omega
+  have hv : CounterPack.tailValue (CounterPack.packTail cs) = CounterPack.packDigits cs := by
+    simp only [CounterPack.tailValue, CounterPack.packTail, leNat_toList, BitVec.toNat_ofNat]
+    exact Nat.mod_eq_of_lt hbits
+  simpa [CounterPack.unpackTail, hv, hlen] using CounterPack.unpackDigits_pack cs hcs
 
 theorem length_toList {n : Nat} (x : Bytes n) : (toList x).length = n := by
   simp [toList, SigGolfCandidate.Legacy.bytes]
@@ -387,9 +524,10 @@ theorem porsSegs_eq : porsSegs = 29 := rfl
 
 theorem headBytes_eq : headBytes = 2144 := rfl
 theorem sigLayerOff_values :
-    (List.range (nLayers + 1)).map sigLayerOff = [2144, 2996, 3768, 4540, 5312, 6068] := by
+    (List.range (nLayers + 1)).map sigLayerOff = [2144, 2992, 3760, 4528, 5296, 6048] := by
   decide
-theorem sigBytes_eq_sigLayerOff : sigBytes = sigLayerOff nLayers := by decide
+theorem sigBytes_eq_sigLayerOff :
+    sigBytes = sigLayerOff nLayers + CounterPack.tailBytes := by decide
 theorem wStream_eq : wStream = 272 := rfl
 theorem streamBytes_eq : streamBytes = 2152 := rfl
 theorem wLayers_eq : wLayers = 2424 := rfl
@@ -412,6 +550,21 @@ theorem countCalls_expandList (m sig : List Byte) :
 private theorem length_slice (l : List Byte) (off len : Nat) (h : off + len ≤ l.length) :
     (slice l off len).length = len := by
   simp [slice]; omega
+
+theorem length_sigCounterTail (sig : List Byte) (hsig : sig.length = 6062) :
+    (sigCounterTail sig).length = 14 := by
+  unfold sigCounterTail
+  rw [length_slice sig CounterPack.tailOffset CounterPack.tailBytes (by rw [hsig]; decide)]
+  rfl
+
+/-- A byte of the compact 14-byte tail at its absolute signature offset. -/
+theorem getD_sigCounterTail (sig : List Byte) (k : Nat) (hk : k < 14) :
+    (sigCounterTail sig).getD k 0 = sig.getD (6048 + k) 0 := by
+  unfold sigCounterTail
+  rw [CounterPack.tailOffset_eq]
+  change (slice sig 6048 14).getD k 0 = sig.getD (6048 + k) 0
+  simp only [slice, List.getD_eq_getElem?_getD, List.getElem?_take, List.getElem?_drop]
+  rw [if_pos hk]
 
 private theorem length_flatten_map_range (n k : Nat) (f : Nat → List Byte)
     (hf : ∀ i, i < n → (f i).length = k) : ((List.range n).map f).flatten.length = n * k := by
@@ -436,24 +589,21 @@ private theorem length_flatten_map_range' (n : Nat) (f : Nat → List Byte) (g :
 bytes and 15 sorted leaves). -/
 theorem length_witnessList (sig : List Byte) (hsig : sig.length = sigBytes) (v vs segs : List Nat)
     (hvs : vs.length = porsK) : (witnessList sig v vs segs).length = witBytes := by
-  have hs : sig.length = 6068 := hsig
-  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigLayerBytes lay ≤ 6068 := by decide
+  have hs : sig.length = 6062 := hsig
+  have hoff : ∀ lay, lay < nLayers → sigLayerOff lay + sigBodyBytes lay ≤ 6062 := by decide
   have hitem : ∀ i, i < porsK → (sigItem sig i).length = 16 := fun i hi =>
     length_slice _ _ _ (by rw [hs]; unfold porsK at hi; omega)
-  have hbody : ∀ lay, lay < nLayers → (sigLayerBody sig lay).length = sigLayerBytes lay - 4 :=
+  have hbody : ∀ lay, lay < nLayers → (sigLayerBody sig lay).length = sigBodyBytes lay :=
     fun lay hl => length_slice _ _ _ (by
-      have := hoff lay hl; have : 4 ≤ sigLayerBytes lay := by unfold sigLayerBytes; omega
-      rw [hs]; omega)
+      have := hoff lay hl; rw [hs]; omega)
   have hctr : ∀ lay, lay < nLayers → (sigCounterBytes sig lay).length = 4 :=
-    fun lay hl => length_slice _ _ _ (by
-      have := hoff lay hl; have : 4 ≤ sigLayerBytes lay := by unfold sigLayerBytes; omega
-      rw [hs]; omega)
+    fun _ _ => by simp [sigCounterBytes, le32, leBytes]
   unfold witnessList
   simp only [List.length_append, List.length_map, List.length_take, length_zeros, hvs,
     length_flatten_map_range _ _ _ hitem, length_flatten_map_range _ _ _ hctr,
     length_flatten_map_range' _ _ _ hbody]
   rw [show (sigRho sig).length = 16 from length_slice _ _ _ (by rw [hs]; decide)]
-  have : ((List.range nLayers).map fun lay => sigLayerBytes lay - 4).sum = 3904 := by decide
+  have : ((List.range nLayers).map sigBodyBytes).sum = 3904 := by decide
   rw [this]
   have : min streamBytes ((segStream sig segs).length + streamBytes) = streamBytes := by omega
   rw [this]
@@ -464,6 +614,8 @@ theorem length_of_expandOf (sig : List Byte) (hsig : sig.length = sigBytes) (N :
     (w : List Byte) (h : expandOf sig N = some w) : w.length = witBytes := by
   unfold expandOf at h
   dsimp only at h
+  split at h
+  · cases h
   split at h
   · cases h
   split at h

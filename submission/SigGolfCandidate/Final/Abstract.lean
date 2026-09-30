@@ -158,8 +158,17 @@ theorem eval_aExpand_sign (seed : MasterSeed) (message : Message) {pk : PublicKe
       Equiv.witDec w = S := by
   obtain ⟨hpk, hP, hadm, secret, node, hS⟩ := sign_shape f seed message hkeys hsign
   set d := Completeness.digestValue f sk message S.randomness with hd
+  have hcounters : Concrete.CountersInRange S := by
+    have hverify := Completeness.verify_of_keygen_sign f seed message hkeys hsign
+    by_contra hbad
+    rw [Concrete.verify_eq_of_not_counters pk message S hbad] at hverify
+    simp at hverify
   obtain ⟨wl, hlen, hexp, hwit⟩ := Equiv.expandOf_honest (Concrete.digestLeaves d) hadm d.toNat
     (fun r => Equiv.leafOf_eq d r) S.randomness secret node S.layers
+    (fun lay => by
+      have h := hcounters lay
+      simpa [Ref.CounterPack.radix, Ref.CounterPack.counterBits,
+        SphincsSecurity.encodingAttemptLimit] using h)
   refine ⟨Ref.ofList 6348 wl, ?_, ?_⟩
   · unfold Equiv.aExpand
     rw [ofList_sigRho_compress, evalWithAnswerFn_bind, evalWithAnswerFn_pure]

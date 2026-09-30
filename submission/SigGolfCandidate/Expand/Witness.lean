@@ -31,22 +31,28 @@ theorem length_slice' (l : List Byte) (off len : Nat) (h : off + len ≤ l.lengt
   simp [slice]; omega
 
 /-- The copies read the signature and write the witness only. -/
-theorem copyRest_pairwise : copyRest.Pairwise (fun c c' => Disj c.2.1 (4 * c.2.2) c'.2.1 (4 * c'.2.2)) := by
+theorem copyBodies_pairwise : copyBodies.Pairwise (fun c c' => Disj c.2.1 (4 * c.2.2) c'.2.1 (4 * c'.2.2)) := by
   decide
 
-theorem copyRest_srcdst : ∀ c ∈ copyRest, ∀ c' ∈ copyRest, Disj c.1 (4 * c.2.2) c'.2.1 (4 * c'.2.2) := by
+theorem copyBodies_srcdst : ∀ c ∈ copyBodies, ∀ c' ∈ copyBodies, Disj c.1 (4 * c.2.2) c'.2.1 (4 * c'.2.2) := by
   decide
 
-theorem copy_hit (g : Nat → Byte) (c : Nat × Nat × Nat) (hc : c ∈ copyRest) (x : Nat)
+theorem copy_hit (g : Nat → Byte) (c : Nat × Nat × Nat) (hc : c ∈ copyBodies) (x : Nat)
     (h1 : c.2.1 ≤ x) (h2 : x < c.2.1 + 4 * c.2.2) :
-    applyCopies copyRest g x = g (x - c.2.1 + c.1) :=
-  applyCopies_hit copyRest g copyRest_pairwise copyRest_srcdst c hc x h1 h2
+    applyCopies copyBodies g x = g (x - c.2.1 + c.1) :=
+  applyCopies_hit copyBodies g copyBodies_pairwise copyBodies_srcdst c hc x h1 h2
 
 theorem copy_miss (g : Nat → Byte) (x : Nat) (hx : x < 0x820 ∨ (0x910 ≤ x ∧ x < 0x1178)) :
-    applyCopies copyRest g x = g x :=
-  applyCopies_frame copyRest g x (by
-    intro c hc; simp only [copyRest, List.mem_cons, List.not_mem_nil, or_false] at hc
-    rcases hc with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp <;> omega)
+    applyCopies copyBodies g x = g x :=
+  applyCopies_frame copyBodies g x (by
+    intro c hc; simp only [copyBodies, List.mem_cons, List.not_mem_nil, or_false] at hc
+    rcases hc with rfl | rfl | rfl | rfl | rfl | rfl <;> simp <;> omega)
+
+/-- The successful tail decoder writes the five reconstructed LE32 counters. -/
+def putCounters (sig : List Byte) (g : Nat → Byte) : Nat → Byte := fun a =>
+  if 0x20b8 ≤ a ∧ a < 0x20b8 + 20 then
+    ((List.range nLayers).map (sigCounterBytes sig)).flatten.getD (a - 0x20b8) 0
+  else g a
 
 theorem flatten_slices (l : List Byte) (off len : Nat) :
     ∀ n, ((List.range n).map (fun k => slice l (off + len * k) len)).flatten = slice l off (len * n) := by
@@ -61,16 +67,17 @@ theorem flatten_slices (l : List Byte) (off len : Nat) :
 theorem getD_take' (l : List Byte) (n i : Nat) (hi : i < n) : (l.take n).getD i 0 = l.getD i 0 := by
   simp only [List.getD_eq_getElem?_getD, List.getElem?_take]; rw [if_pos hi]
 
-theorem witness_bytes (sig : List Byte) (hsig : sig.length = 6068) (N : Nat) (A : Nat → Nat)
+theorem witness_bytes (sig : List Byte) (hsig : sig.length = 6062) (N : Nat) (A : Nat → Nat)
     (hSK : SortedKeys N A) (hn : (leavesOf N).Nodup) (segs : List Nat) (f0 : Nat → Byte)
-    (h1 : ∀ j < 6068, f0 (0x3300 + j) = sig.getD j 0)
+    (h1 : ∀ j < 6062, f0 (0x3300 + j) = sig.getD j 0)
     (h2 : ∀ i < 2152, f0 (0x910 + i) = (curStream sig segs 0).getD i 0) (h3 : f0 0x81F = 0) :
-    ∀ i < 6348, applyCopies copyRest (piF A 15 (applyCopy (0x3300, 0x800, 4) f0)) (0x800 + i) =
+    ∀ i < 6348, putCounters sig
+        (applyCopies copyBodies (piF A 15 (applyCopy (0x3300, 0x800, 4) f0))) (0x800 + i) =
       (witnessList sig (leavesOf N) (vsOf A) segs).getD i 0 := by
   intro i hi
   set g := piF A 15 (applyCopy (0x3300, 0x800, 4) f0) with hg
   -- the signature under the copies
-  have hgs : ∀ j < 6068, g (0x3300 + j) = sig.getD j 0 := by
+  have hgs : ∀ j < 6062, g (0x3300 + j) = sig.getD j 0 := by
     intro j hj; simp only [hg, piF, applyCopy]; rw [if_neg (by omega), if_neg (by omega)]; exact h1 j hj
   -- the witness as one concatenation with explicit lengths
   have eS : ((List.range porsK).map (sigItem sig)).flatten = slice sig 16 240 := by
@@ -78,55 +85,54 @@ theorem witness_bytes (sig : List Byte) (hsig : sig.length = 6068) (N : Nat) (A 
     simp only [show 16 * 15 = 240 from rfl] at this
     rw [← this]; unfold porsK sigItem; rfl
   have eB : ((List.range nLayers).map (sigLayerBody sig)).flatten =
-      slice sig 2148 848 ++ (slice sig 3000 768 ++ (slice sig 3772 768 ++ (slice sig 4544 768 ++
-        slice sig 5316 752))) := by
+      slice sig 2144 848 ++ (slice sig 2992 768 ++ (slice sig 3760 768 ++ (slice sig 4528 768 ++
+        slice sig 5296 752))) := by
     simp only [nLayers, List.range_succ, List.range_zero, List.map_append, List.map_cons, List.map_nil,
       List.nil_append, List.flatten_append, List.flatten_cons, List.flatten_nil, List.append_nil,
       List.append_assoc]
     unfold sigLayerBody
-    rw [show sigLayerOff 0 = 2144 by decide, show sigLayerOff 1 = 2996 by decide,
-      show sigLayerOff 2 = 3768 by decide, show sigLayerOff 3 = 4540 by decide,
-      show sigLayerOff 4 = 5312 by decide, show sigLayerBytes 0 = 852 by decide,
-      show sigLayerBytes 1 = 772 by decide, show sigLayerBytes 2 = 772 by decide,
-      show sigLayerBytes 3 = 772 by decide, show sigLayerBytes 4 = 756 by decide]
-  have eC : ((List.range nLayers).map (sigCounterBytes sig)).flatten =
-      slice sig 2144 4 ++ (slice sig 2996 4 ++ (slice sig 3768 4 ++ (slice sig 4540 4 ++
-        slice sig 5312 4))) := by
-    simp only [nLayers, List.range_succ, List.range_zero, List.map_append, List.map_cons, List.map_nil,
-      List.nil_append, List.flatten_append, List.flatten_cons, List.flatten_nil, List.append_nil,
-      List.append_assoc]
-    unfold sigCounterBytes
-    rw [show sigLayerOff 0 = 2144 by decide, show sigLayerOff 1 = 2996 by decide,
-      show sigLayerOff 2 = 3768 by decide, show sigLayerOff 3 = 4540 by decide,
-      show sigLayerOff 4 = 5312 by decide]
+    rw [show sigLayerOff 0 = 2144 by decide, show sigLayerOff 1 = 2992 by decide,
+      show sigLayerOff 2 = 3760 by decide, show sigLayerOff 3 = 4528 by decide,
+      show sigLayerOff 4 = 5296 by decide, show sigBodyBytes 0 = 848 by decide,
+      show sigBodyBytes 1 = 768 by decide, show sigBodyBytes 2 = 768 by decide,
+      show sigBodyBytes 3 = 768 by decide, show sigBodyBytes 4 = 752 by decide]
   have lr : (sigRho sig).length = 16 := length_slice' _ _ _ (by omega)
   have lp : ((vsOf A).map (fun x => byte (8 * (leavesOf N).idxOf x))).length = 15 := by simp [vsOf]
   have lz : (zeros (wSec - wPi - porsK)).length = 1 := by simp [zeros, wSec, wPi, porsK]
   have ls : (slice sig 16 240).length = 240 := length_slice' _ _ _ (by omega)
   have lt : ((segStream sig segs ++ zeros streamBytes).take streamBytes).length = 2152 := by
     rw [List.length_take, List.length_append, streamBytes_eq]; simp only [zeros, List.length_replicate]; omega
-  have l0 : (slice sig 2148 848).length = 848 := length_slice' _ _ _ (by omega)
-  have l1 : (slice sig 3000 768).length = 768 := length_slice' _ _ _ (by omega)
-  have l2 : (slice sig 3772 768).length = 768 := length_slice' _ _ _ (by omega)
-  have l3 : (slice sig 4544 768).length = 768 := length_slice' _ _ _ (by omega)
-  have l4 : (slice sig 5316 752).length = 752 := length_slice' _ _ _ (by omega)
-  have k0 : (slice sig 2144 4).length = 4 := length_slice' _ _ _ (by omega)
-  have k1 : (slice sig 2996 4).length = 4 := length_slice' _ _ _ (by omega)
-  have k2 : (slice sig 3768 4).length = 4 := length_slice' _ _ _ (by omega)
-  have k3 : (slice sig 4540 4).length = 4 := length_slice' _ _ _ (by omega)
-  have k4 : (slice sig 5312 4).length = 4 := length_slice' _ _ _ (by omega)
+  have l0 : (slice sig 2144 848).length = 848 := length_slice' _ _ _ (by omega)
+  have l1 : (slice sig 2992 768).length = 768 := length_slice' _ _ _ (by omega)
+  have l2 : (slice sig 3760 768).length = 768 := length_slice' _ _ _ (by omega)
+  have l3 : (slice sig 4528 768).length = 768 := length_slice' _ _ _ (by omega)
+  have l4 : (slice sig 5296 752).length = 752 := length_slice' _ _ _ (by omega)
+  have lc : ((List.range nLayers).map (sigCounterBytes sig)).flatten.length = 20 := by
+    have hc : ∀ lay, (sigCounterBytes sig lay).length = 4 := by
+      intro lay
+      exact length_le32 _
+    rw [List.length_flatten, List.map_map]
+    change ((List.range nLayers).map (fun lay => (sigCounterBytes sig lay).length)).sum = 20
+    simp [nLayers, hc]
   unfold witnessList
-  rw [eS, eB, eC]
+  rw [eS, eB]
   simp only [List.append_assoc]
-  simp only [getD_app, lr, lp, lz, ls, lt, l0, l1, l2, l3, l4, k0, k1, k2, k3, k4, List.length_nil]
+  simp only [getD_app, lr, lp, lz, ls, lt, l0, l1, l2, l3, l4, lc, List.length_nil]
   -- a copied region: `x = 0x800 + i` in `[dst, dst + 4 n)` reads `sig[x - dst + src - 0x3300]`
-  have cp : ∀ c ∈ copyRest, c.2.1 ≤ 0x800 + i → 0x800 + i < c.2.1 + 4 * c.2.2 → 0x3300 ≤ c.1 →
-      c.1 + 4 * c.2.2 ≤ 0x3300 + 6068 →
-      applyCopies copyRest g (0x800 + i) = sig.getD (0x800 + i - c.2.1 + c.1 - 0x3300) 0 := by
+  have cp : ∀ c ∈ copyBodies, c.2.1 ≤ 0x800 + i → 0x800 + i < c.2.1 + 4 * c.2.2 → 0x3300 ≤ c.1 →
+      c.1 + 4 * c.2.2 ≤ 0x3300 + 6062 →
+      applyCopies copyBodies g (0x800 + i) = sig.getD (0x800 + i - c.2.1 + c.1 - 0x3300) 0 := by
     intro c hc h1 h2 h3 h4
     rw [copy_hit g c hc _ h1 h2]
     have := hgs (0x800 + i - c.2.1 + c.1 - 0x3300) (by omega)
     rwa [show 0x3300 + (0x800 + i - c.2.1 + c.1 - 0x3300) = 0x800 + i - c.2.1 + c.1 by omega] at this
+  unfold putCounters
+  by_cases hcounterArea : 0x20b8 ≤ 0x800 + i ∧ 0x800 + i < 0x20b8 + 20
+  · rw [if_pos hcounterArea]
+    repeat' rw [if_neg (by omega)]
+    exact congrArg (fun j => ((List.range nLayers).map (sigCounterBytes sig)).flatten.getD j 0)
+      (by omega)
+  rw [if_neg hcounterArea]
   by_cases r0 : i < 16
   · rw [if_pos r0, copy_miss g _ (by omega)]
     simp only [hg, piF, applyCopy]; rw [if_neg (by omega), if_pos (by omega)]
@@ -163,52 +169,31 @@ theorem witness_bytes (sig : List Byte) (hsig : sig.length = 6068) (N : Nat) (A 
     · rw [getD_zeros, getD_zeros]
   rw [if_neg r4]
   by_cases q0 : i - 16 - 15 - 1 - 240 - 2152 < 848
-  · rw [if_pos q0, cp (0x3B64, 0x1178, 212) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q0, cp (0x3B60, 0x1178, 212) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q0]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q0]
   by_cases q1 : i - 16 - 15 - 1 - 240 - 2152 - 848 < 768
-  · rw [if_pos q1, cp (0x3EB8, 0x14C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q1, cp (0x3EB0, 0x14C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q1]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q1]
   by_cases q2 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 < 768
-  · rw [if_pos q2, cp (0x41BC, 0x17C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q2, cp (0x41B0, 0x17C8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q2]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q2]
   by_cases q3 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 < 768
-  · rw [if_pos q3, cp (0x44C0, 0x1AC8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q3, cp (0x44B0, 0x1AC8, 192) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q3]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q3]
   by_cases q4 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 < 752
-  · rw [if_pos q4, cp (0x47C4, 0x1DC8, 188) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
+  · rw [if_pos q4, cp (0x47B0, 0x1DC8, 188) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
       getD_slice' _ _ _ _ q4]
     exact congrArg (fun j => sig.getD j 0) (by simp; omega)
   rw [if_neg q4]
-  by_cases q5 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 < 4
-  · rw [if_pos q5, cp (0x3B60, 0x20B8, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
-      getD_slice' _ _ _ _ q5]
-    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
-  rw [if_neg q5]
-  by_cases q6 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 < 4
-  · rw [if_pos q6, cp (0x3EB4, 0x20BC, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
-      getD_slice' _ _ _ _ q6]
-    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
-  rw [if_neg q6]
-  by_cases q7 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 - 4 < 4
-  · rw [if_pos q7, cp (0x41B8, 0x20C0, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
-      getD_slice' _ _ _ _ q7]
-    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
-  rw [if_neg q7]
-  by_cases q8 : i - 16 - 15 - 1 - 240 - 2152 - 848 - 768 - 768 - 768 - 752 - 4 - 4 - 4 < 4
-  · rw [if_pos q8, cp (0x44BC, 0x20C4, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
-      getD_slice' _ _ _ _ q8]
-    exact congrArg (fun j => sig.getD j 0) (by simp; omega)
-  rw [if_neg q8]
-  rw [cp (0x47C0, 0x20C8, 1) (by decide) (by simp; omega) (by simp; omega) (by simp) (by simp),
-    getD_slice' _ _ _ _ (by omega)]
-  exact congrArg (fun j => sig.getD j 0) (by simp; omega)
+  exfalso
+  omega
 
 end SigGolfCandidate.Expand

@@ -1,4 +1,4 @@
-import SigGolfCandidate.Ref.Basic
+import SigGolfCandidate.Ref.CounterPack
 
 /-!
 # SPHINCS-golf reference specification: keygen, sign, expand, verify
@@ -212,10 +212,11 @@ def signLayers (S cache : List Byte) (idx : Nat) :
       | none => pure none
       | some rest => pure (some (rest ++ [(c, vals, path)]))
 
-/-- Signature bytes: `rho | FTS items (133 × 16) | (LE32 c, vals, path)_{lay=0..4}`. -/
+/-- Signature bytes: `rho | FTS items | five layer bodies | 14-byte counter tail`. -/
 def serialize (rho : Val) (fts : List Val) (lays : List LayerSig) : List Byte :=
   rho ++ fts.flatten ++
-    (lays.map fun l => le32 l.1 ++ l.2.1.flatten ++ l.2.2.flatten).flatten
+    (lays.map fun l => l.2.1.flatten ++ l.2.2.flatten).flatten ++
+    CounterPack.packTail (lays.map Prod.fst)
 
 /-- `ref.sign`: the MAC check of the cache (one query; `none` on a mismatch), the digest search,
 the PORS tree of `idx` (its root is the message of the bottom layer), the layers `4 .. 0`. -/
@@ -234,27 +235,47 @@ def signList (S cache m : List Byte) : OracleComp HashSpec (Option (List Byte)) 
   else pure none
 
 def signRef (sk : Bytes 32) (cache : Cache) (m : Bytes 32) :
-    OracleComp HashSpec (Option (Bytes 6068)) := do
+    OracleComp HashSpec (Option (Bytes 6062)) := do
   let r ← signList (toList sk) (toList cache) (toList m)
-  pure (r.map (ofList 6068))
+  pure (r.map (ofList 6062))
 
 /-! ## Signature and witness layout -/
 
-/-- Bytes of layer `lay` in the signature: `LE32 c`, 42 chain values, `h_lay` siblings. -/
+/-- Logical layer size including its 4-byte witness counter. -/
 def sigLayerBytes (lay : Nat) : Nat := 4 + 16 * nChains + 16 * height lay
+/-- Wire bytes of a layer body; all five counters are in the final packed tail. -/
+def sigBodyBytes (lay : Nat) : Nat := sigLayerBytes lay - 4
 /-- Bytes before the layers (`ref.LAYER0`): `rho` and the 133 FTS items (2144). -/
 def headBytes : Nat := 16 + 16 * (porsK + porsM)
-/-- Offset of layer `lay` in the signature (`ref.sig_layer_offset`). -/
-def sigLayerOff (lay : Nat) : Nat := headBytes + ((List.range lay).map sigLayerBytes).sum
+/-- Offset of layer `lay`'s aligned body in the compact signature. -/
+def sigLayerOff (lay : Nat) : Nat := headBytes + ((List.range lay).map sigBodyBytes).sum
+
+theorem sigBodyBytes_eq_counterPack (lay : Nat) :
+    sigBodyBytes lay = CounterPack.bodyBytes lay := by
+  simp only [sigBodyBytes, sigLayerBytes, CounterPack.bodyBytes]
+  omega
+
+theorem sigLayerOff_eq_bodyOffset (lay : Nat) :
+    sigLayerOff lay = CounterPack.bodyOffset lay := by
+  have hm : (List.range lay).map sigBodyBytes =
+      (List.range lay).map CounterPack.bodyBytes := by
+    apply List.map_congr_left
+    intro i _
+    exact sigBodyBytes_eq_counterPack i
+  simp [sigLayerOff, CounterPack.bodyOffset, headBytes, hm]
 
 /-- Signature fields (`ref.parse`): `rho`, FTS item `i < 133` (secrets `i < 15`, then auth slots). -/
 def sigRho (sig : List Byte) : Val := slice sig 0 16
 def sigItem (sig : List Byte) (i : Nat) : Val := slice sig (16 + 16 * i) 16
 def sigAuth (sig : List Byte) (i : Nat) : Val := sigItem sig (porsK + i)
-/-- The counter bytes and the body (chain values, path) of layer `lay` in the signature. -/
-def sigCounterBytes (sig : List Byte) (lay : Nat) : List Byte := slice sig (sigLayerOff lay) 4
+/-- Reconstructed LE32 counter bytes for the unchanged witness. -/
+def sigCounterTail (sig : List Byte) : List Byte :=
+  slice sig CounterPack.tailOffset CounterPack.tailBytes
+def sigCounterBytes (sig : List Byte) (lay : Nat) : List Byte :=
+  le32 (CounterPack.unpackCounter (sigCounterTail sig) lay)
+/-- The body bytes are contiguous and begin at an eight-byte-aligned offset. -/
 def sigLayerBody (sig : List Byte) (lay : Nat) : List Byte :=
-  slice sig (sigLayerOff lay + 4) (sigLayerBytes lay - 4)
+  slice sig (sigLayerOff lay) (sigBodyBytes lay)
 
 /-- Witness offsets: `pi` (`W_PI`), sorted secrets (`W_SEC`), segment stream (`W_STREAM`), its
 size (`STREAM_BYTES = 8 * 29 + 16 * 120`), layer bodies (`W_LAYERS`). -/
@@ -264,7 +285,7 @@ def wStream : Nat := wSec + 16 * porsK
 def streamBytes : Nat := 8 * porsSegs + 16 * 120
 def wLayers : Nat := wStream + streamBytes
 /-- Offset of layer `lay`'s body (chain values, path) in the witness (`ref.wit_layer_offset`). -/
-def witLayerOff (lay : Nat) : Nat := wLayers + ((List.range lay).map fun l => sigLayerBytes l - 4).sum
+def witLayerOff (lay : Nat) : Nat := wLayers + ((List.range lay).map sigBodyBytes).sum
 /-- Offset of the counters in the witness (`ref.WIT_COUNTERS = 6328`). -/
 def witCounters : Nat := witLayerOff nLayers
 
@@ -297,7 +318,8 @@ indices of `N` are distinct, their octopus has `≤ 118` nodes and the unused au
 `n .. 117` (`n` = the octopus size = the number of reads) are zero; else the witness. -/
 def expandOf (sig : List Byte) (N : Nat) : Option (List Byte) :=
   let v := leavesOf N
-  if !decide v.Nodup then none
+  if !CounterPack.canonicalTail (sigCounterTail sig) then none
+  else if !decide v.Nodup then none
   else
     let vs := sortLeaves v
     if octopusSize vs > porsM then none
@@ -313,7 +335,7 @@ def expandList (m sig : List Byte) : OracleComp HashSpec (Option (List Byte)) :=
   pure (expandOf sig N)
 
 /-- `ref.expand(pk, m, sig)` (the public key is unused). -/
-def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6068) :
+def expandRef (m : Bytes 32) (_pk : Bytes 16) (sig : Bytes 6062) :
     OracleComp HashSpec (Option (Bytes 6348)) := do
   let r ← expandList (toList m) (toList sig)
   pure (r.map (ofList 6348))
@@ -331,7 +353,7 @@ def witSib (w : List Byte) (lay l : Nat) : Val := slice w (witLayerOff lay + 672
 def witPath (w : List Byte) (lay : Nat) : List Val := (List.range (height lay)).map (witSib w lay)
 def witCounter (w : List Byte) (lay : Nat) : Nat := leNat (slice w (witCounters + 4 * lay) 4)
 
-/-- The counter range check: every `c_lay < 2^20`. -/
+/-- The counter range check: every `c_lay < 2^22`. -/
 def countersOk (w : List Byte) : Bool := (List.range nLayers).all fun lay => witCounter w lay < cMax
 
 /-- `ref.fold` (TreeFold / FtsFold): levels `lam = 0 .. |path|-1` with node
@@ -489,7 +511,7 @@ def verifyRef (m : Bytes 32) (pk : Bytes 16) (w : Bytes 6348) : OracleComp HashS
   verifyList (toList m) (toList pk) (toList w)
 
 /-- `ref.verify`: expand, then verify the witness (`false` if expand fails). -/
-def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6068) : OracleComp HashSpec Bool := do
+def verifySigRef (m : Bytes 32) (pk : Bytes 16) (sig : Bytes 6062) : OracleComp HashSpec Bool := do
   match ← expandRef m pk sig with
   | none => pure false
   | some w => verifyRef m pk w

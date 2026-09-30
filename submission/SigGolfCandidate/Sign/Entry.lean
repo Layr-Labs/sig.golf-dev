@@ -73,6 +73,18 @@ theorem stage_bytes (t : MachineState) (l : Nat) (hl : l < 5) (ls : LayerSig) (h
   refine bytesAt_of_readWords t _ _ _ (by omega) (by rw [hlen]; omega) ?_ hw
   rw [List.length_append, length_flatten_vals _ h4, length_flatten_vals _ h7, hlen, h3, h6]; ring
 
+/-- The appended signer pass reads only the aligned staged body. -/
+theorem stage_body_bytes (t : MachineState) (l : Nat) (hl : l < 5)
+    (ls : LayerSig) (h : StageAt t l ls) :
+    bytesAt t (0x900 + 856 * l + 8) (672 + 16 * height l) =
+      ls.2.1.flatten ++ ls.2.2.flatten := by
+  have hfull := stage_bytes t l hl ls h
+  have hc32 : ls.1 < 2 ^ 32 := by have hc := h.2.1; omega
+  have hcounter := le32_bytes t (0x900 + 856 * l) ls.1 (by omega)
+    (by omega) hc32 h.1
+  rw [hcounter] at hfull
+  exact List.append_cancel_left hfull
+
 theorem flatMap_range_eq {β γ : Type} (xs : List β) (g : Nat → List γ) (f : β → List γ)
     (h : ∀ l (hl : l < xs.length), g l = f xs[l]) :
     (List.range xs.length).flatMap g = (xs.map f).flatten := by
@@ -87,16 +99,32 @@ theorem flatMap_range_eq {β γ : Type} (xs : List β) (g : Nat → List γ) (f 
     rw [h xs.length (by simp), List.getElem_append_right (le_refl _)]
     simp
 
+/-- The five staged bodies, in exactly the order of the compact signature. -/
+theorem staged_bodies (t : MachineState) (lays : List LayerSig)
+    (hlen : lays.length = 5)
+    (hst : ∀ l (hl : l < lays.length), StageAt t l lays[l]) :
+    (List.range 5).flatMap
+        (fun l => bytesAt t (0x900 + 856 * l + 8) (672 + 16 * height l)) =
+      (lays.map fun l => l.2.1.flatten ++ l.2.2.flatten).flatten := by
+  rw [← hlen]
+  exact flatMap_range_eq lays _ _ (fun l hl => stage_body_bytes t l (by omega) lays[l] (hst l hl))
+
+/-- The inherited 491-dword pack's intermediate interleaved layout. The appended
+body/tail pass replaces this layout before the final ECALL. -/
+def packedInterleaved (rho : Val) (fts : List Val) (lays : List LayerSig) : List Byte :=
+  rho ++ fts.flatten ++
+    (lays.map fun l => le32 l.1 ++ l.2.1.flatten ++ l.2.2.flatten).flatten
+
 set_option maxRecDepth 100000 in
-/-- The signature bytes after the pack. -/
-theorem final_bytes (t4 : MachineState) (rho : Val) (fts : List Val) (lays : List LayerSig)
+theorem pack_interleaved_bytes (t4 : MachineState) (rho : Val) (fts : List Val)
+    (lays : List LayerSig)
     (hhead : bytesAt t4 0x3300 2144 = rho ++ fts.flatten)
     (hll : lays.length = 5) (hst : ∀ l (hl : l < lays.length), StageAt t4 l lays[l]) (t5 : MachineState)
     (hw5 : t5.readWords (BitVec.ofNat 64 (0x3300 + 2144)) 491 = packTab.map (packDW t4))
     (hf5 : Frame t4 t5 (fun x => packD ≤ x ∧ x < packD + 8 * 491)) :
-    bytesAt t5 0x3300 6068 = serialize rho fts lays := by
+    bytesAt t5 0x3300 6068 = packedInterleaved rho fts lays := by
   rw [show (6068 : Nat) = 2144 + 3924 from rfl, bytesAt_add, pack_layers t4 t5 hw5]
-  unfold serialize
+  unfold packedInterleaved
   congr 1
   · rw [← hhead]
     unfold bytesAt; apply List.map_congr_left; intro i hi
@@ -110,5 +138,21 @@ theorem final_bytes (t4 : MachineState) (rho : Val) (fts : List Val) (lays : Lis
     refine flatMap_range_eq lays _ _ (fun l hl => ?_)
     rw [List.append_assoc]
     exact (stage_bytes t4 l (by omega) lays[l] (hst l hl)).trans (by rw [List.append_assoc])
+
+/-- The final signer bytes follow once the appended code has copied each aligned body
+and encoded the canonical tail. This leaves the instruction-level copy proof local. -/
+theorem final_bytes_of_parts (t : MachineState) (rho : Val) (fts : List Val)
+    (lays : List LayerSig)
+    (hhead : bytesAt t 0x3300 2144 = rho ++ fts.flatten)
+    (hbodies : bytesAt t (0x3300 + 2144) 3904 =
+      (lays.map fun l => l.2.1.flatten ++ l.2.2.flatten).flatten)
+    (htail : bytesAt t (0x3300 + 6048) 14 = CounterPack.packTail (lays.map Prod.fst)) :
+    bytesAt t 0x3300 6062 = serialize rho fts lays := by
+  rw [show (6062 : Nat) = 2144 + (3904 + 14) from rfl,
+    bytesAt_add t 0x3300 2144 (3904 + 14),
+    bytesAt_add t (0x3300 + 2144) 3904 14,
+    show (0x3300 + 2144 + 3904 : Nat) = 0x3300 + 6048 from rfl,
+    hhead, hbodies, htail]
+  simp only [serialize, List.append_assoc]
 
 end SigGolfCandidate.Sign

@@ -14,7 +14,7 @@ open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGol
 theorem pack_run : PackStep 718 2841 0 491 2123 :=
   ((((((packStep_718.comp packStep_1158 (by norm_num)).comp packStep_1438 (by norm_num)).comp packStep_1749 (by norm_num)).comp packStep_2129 (by norm_num)).comp packStep_2341 (by norm_num)).comp packStep_2781 (by norm_num))
 
--- The final HALT.
+-- The inherited pack now hands control to the compact-tail appendix.
 sym_block blk2841 := symRun { noAlias := true } seg2841 (pcOf 2841) 4
 
 end SigGolfCandidate.Sign

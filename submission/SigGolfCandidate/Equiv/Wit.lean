@@ -13,8 +13,9 @@ The abstract `Signature` is witness-shaped (`SphincsSecurity.FtsSignature`: slot
   `Ref.wStream = 272` by a pointer (header byte `b`: `a = b mod 16`, merge = bit 4, `t` = bit 5,
   normalised when `a = 0`; the `a` nodes at `ptr + 8 + 16 i`; next header at `ptr + 8 + 16 a`), bytes
   beyond the witness read as zero, the layer bodies and the counters.
-* `compressList` / `compress : Signature → Bytes 6068`: `rho | secrets | the nodes of segments
-  0..28 concatenated, zero padded (or cut) to 120 nodes | per layer LE32 counter, chain values, path`.
+* `compressList` / `compress : Signature → Bytes 6062`: `rho | secrets | the nodes of segments
+  0..28 concatenated, zero padded (or cut) to 118 nodes | five aligned chain/path bodies |
+  canonical 14-byte counter tail`.
 * `aExpand m pk σ`: the digest query of `rho = σ[0..16)` and `m` through the abstract hash, then the
   pure reconstruction `Ref.expandOf` of the reference.
 -/
@@ -77,27 +78,32 @@ def witDec (w : Bytes 6348) : Signature := witSig (Ref.toList w)
 def authNodes (σ : Signature) : List Digest :=
   (List.ofFn fun j => List.ofFn (σ.fts.segments j).nodes).flatten
 
-/-- One layer: `LE32 c`, the 42 chain values and the path. -/
+/-- One logical layer: `LE32 c`, the 42 chain values and the path. -/
 def layerBytes (σ : Signature) (lay : Layer) : List Byte :=
   Ref.toList (n := 4) (σ.layers lay).counter ++
     (List.ofFn fun i => dv ((σ.layers lay).chainValues i)).flatten ++
     (List.ofFn fun j => dv ((σ.layers lay).path j)).flatten
 
-/-- **The compact signature bytes**: `rho | 15 secrets | 120 authentication-node slots (the segments'
-nodes in order, zero padded, cut at 120) | layers 0..4`. -/
+/-- The aligned body of one compact-signature layer. -/
+def layerBodyBytes (σ : Signature) (lay : Layer) : List Byte :=
+  (List.ofFn fun i => dv ((σ.layers lay).chainValues i)).flatten ++
+    (List.ofFn fun j => dv ((σ.layers lay).path j)).flatten
+
+/-- **The compact signature bytes**: `rho | PORS items | aligned layer bodies | 14-byte counter tail`. -/
 def compressList (σ : Signature) : List Byte :=
   dv σ.randomness ++ (List.ofFn fun s => dv (σ.fts.secrets s)).flatten ++
     (((authNodes σ).map dv).flatten ++ Ref.zeros (16 * Ref.porsM)).take (16 * Ref.porsM) ++
-    (List.ofFn (layerBytes σ)).flatten
+    (List.ofFn (layerBodyBytes σ)).flatten ++
+    Ref.CounterPack.packTail (List.ofFn fun lay : Layer => (σ.layers lay).counter.toNat)
 
 /-- **The compact signature**. -/
-def compress (σ : Signature) : Bytes 6068 := Ref.ofList 6068 (compressList σ)
+def compress (σ : Signature) : Bytes 6062 := Ref.ofList 6062 (compressList σ)
 
 /-! ## The abstract expansion -/
 
 /-- **The abstract expansion**: the digest of `rho = σ[0..16)` and the message (one abstract query),
 then the reference's pure reconstruction `Ref.expandOf` (which fails on malformed signatures). -/
-def aExpand (m : Message) (pk : PublicKey) (σ : Bytes 6068) : AComp (Option (Bytes 6348)) := do
+def aExpand (m : Message) (pk : PublicKey) (σ : Bytes 6062) : AComp (Option (Bytes 6348)) := do
   let d ← SphincsSecurity.Concrete.messageDigest (m := AComp) 0 pk.root m
     (Ref.ofList 16 (Ref.sigRho (Ref.toList σ)))
   pure ((Ref.expandOf (Ref.toList σ) d.toNat).map (Ref.ofList 6348))
@@ -116,19 +122,26 @@ theorem length_layerBytes (σ : Signature) (lay : Layer) :
   rw [length_flatten_ofFn _ 16 (fun j => length_dv _), length_flatten_ofFn _ 16 (fun j => length_dv _)]
   fin_cases lay <;> rfl
 
-theorem length_compressList (σ : Signature) : (compressList σ).length = 6068 := by
+theorem length_layerBodyBytes (σ : Signature) (lay : Layer) :
+    (layerBodyBytes σ lay).length = Ref.sigBodyBytes lay.val := by
+  simp only [layerBodyBytes, List.length_append]
+  rw [length_flatten_ofFn _ 16 (fun j => length_dv _), length_flatten_ofFn _ 16 (fun j => length_dv _)]
+  fin_cases lay <;> rfl
+
+theorem length_compressList (σ : Signature) : (compressList σ).length = 6062 := by
   simp only [compressList, List.length_append, length_dv, List.length_take, Ref.zeros,
     List.length_replicate]
   rw [length_flatten_ofFn _ 16 (fun j => length_dv _)]
-  have hl : (List.ofFn (layerBytes σ)).flatten.length = 3924 := by
+  have hl : (List.ofFn (layerBodyBytes σ)).flatten.length = 3904 := by
     rw [List.length_flatten, List.map_ofFn]
-    simp only [Function.comp_def, length_layerBytes, List.sum_ofFn]
+    simp only [Function.comp_def, length_layerBodyBytes, List.sum_ofFn]
     decide
-  rw [hl]
+  rw [hl, Ref.CounterPack.length_packTail]
   simp only [SphincsSecurity.ftsOpenings, Ref.porsM]
+  simp only [Ref.CounterPack.tailBytes]
   omega
 
 theorem toList_compress (σ : Signature) : Ref.toList (compress σ) = compressList σ :=
-  Ref.toList_ofList 6068 _ (length_compressList σ)
+  Ref.toList_ofList 6062 _ (length_compressList σ)
 
 end SigGolfCandidate.Equiv

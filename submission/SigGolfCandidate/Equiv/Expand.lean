@@ -29,7 +29,7 @@ attribute [local reducible] SphincsSecurity.hashOutputBits SphincsSecurity.diges
 
 /-- **expand**: the reference expansion is the relabelled abstract expansion (any abstract key). -/
 theorem expandRef_eq (m : Bytes 32) (pk : Bytes 16) (pk' : SphincsSecurity.PublicKey)
-    (σ : Bytes 6068) :
+    (σ : Bytes 6062) :
     Ref.expandRef m pk σ = relabel fmtQ (aExpand m pk' σ) := by
   have hr : dv (Ref.ofList 16 (Ref.sigRho (Ref.toList σ))) = Ref.sigRho (Ref.toList σ) :=
     Ref.toList_ofList 16 _ (by simp [Ref.sigRho, Ref.slice, Ref.length_toList])
@@ -108,7 +108,7 @@ theorem segStream_eq (sig : List Byte) (segs : List Nat) :
   simp
 
 section stream
-variable (sig : List Byte) (hsig : sig.length = 6068)
+variable (sig : List Byte) (hsig : sig.length = 6062)
 include hsig
 
 theorem length_sigAuth (k : Nat) (hk : k < 118) : (Ref.sigAuth sig k).length = 16 := by
@@ -202,7 +202,7 @@ theorem chunks_eq (bs : List Nat) (f : Nat → List Byte) :
 /-! ## The witness layout -/
 
 section layout
-variable (sig : List Byte) (hsig : sig.length = 6068) (v vs segs : List Nat) (hvs : vs.length = 15)
+variable (sig : List Byte) (hsig : sig.length = 6062) (v vs segs : List Nat) (hvs : vs.length = 15)
 
 /-- The witness: `head (272 bytes) ++ stream region ++ tail`. -/
 theorem witnessList_split : Ref.witnessList sig v vs segs =
@@ -235,21 +235,21 @@ theorem length_E : ((Ref.segStream sig segs ++ Ref.zeros Ref.streamBytes).take R
   rw [Nat.min_eq_left (by omega)]
   exact Ref.streamBytes_eq
 
-theorem layer_bound : ∀ l, l < 5 → Ref.sigLayerOff l + Ref.sigLayerBytes l ≤ 6068 := by decide
+theorem layer_bound : ∀ l, l < 5 → Ref.sigLayerOff l + Ref.sigBodyBytes l ≤ 6062 := by decide
 
 include hsig in
 theorem length_sigLayerBody (l : Nat) (hl : l < 5) :
-    (Ref.sigLayerBody sig l).length = Ref.sigLayerBytes l - 4 :=
-  length_slice _ _ _ (by have := layer_bound l hl; rw [hsig]; unfold Ref.sigLayerBytes at *; omega)
+    (Ref.sigLayerBody sig l).length = Ref.sigBodyBytes l :=
+  length_slice _ _ _ (by have := layer_bound l hl; rw [hsig]; omega)
 
 include hsig in
 theorem length_sigCounterBytes (l : Nat) (hl : l < 5) : (Ref.sigCounterBytes sig l).length = 4 :=
-  length_slice _ _ _ (by have := layer_bound l hl; rw [hsig]; unfold Ref.sigLayerBytes at *; omega)
+  by simp [Ref.sigCounterBytes]
 
 include hsig in
 theorem length_bodies (k : Nat) (hk : k ≤ 5) :
     ((List.range k).map (Ref.sigLayerBody sig)).flatten.length =
-      ((List.range k).map fun l => Ref.sigLayerBytes l - 4).sum := by
+      ((List.range k).map Ref.sigBodyBytes).sum := by
   rw [List.length_flatten, List.map_map]
   congr 1
   apply List.map_congr_left
@@ -344,16 +344,16 @@ theorem witPi_W (s : Nat) (hs : s < 15) :
 /-! ### Layers -/
 
 theorem layer_table : ∀ l, l < 5 →
-    Ref.witLayerOff l = 2424 + ((List.range l).map fun l => Ref.sigLayerBytes l - 4).sum ∧
-    ((List.range l).map fun l => Ref.sigLayerBytes l - 4).sum + (Ref.sigLayerBytes l - 4) ≤ 3904 ∧
+    Ref.witLayerOff l = 2424 + ((List.range l).map Ref.sigBodyBytes).sum ∧
+    ((List.range l).map Ref.sigBodyBytes).sum + Ref.sigBodyBytes l ≤ 3904 ∧
     Ref.sigLayerBytes l = 676 + 16 * Ref.height l ∧ 2144 ≤ Ref.sigLayerOff l := by decide
 
 include hsig in
 theorem slice_bodies (lay : Nat) (hlay : lay < 5) (y len : Nat)
-    (hy : y + len ≤ Ref.sigLayerBytes lay - 4) :
+    (hy : y + len ≤ Ref.sigBodyBytes lay) :
     Ref.slice ((List.range Ref.nLayers).map (Ref.sigLayerBody sig)).flatten
-        (((List.range lay).map fun l => Ref.sigLayerBytes l - 4).sum + y) len =
-      Ref.slice sig (Ref.sigLayerOff lay + 4 + y) len := by
+        (((List.range lay).map Ref.sigBodyBytes).sum + y) len =
+      Ref.slice sig (Ref.sigLayerOff lay + y) len := by
   have hL : ((List.range Ref.nLayers).map (Ref.sigLayerBody sig)).take lay =
       (List.range lay).map (Ref.sigLayerBody sig) := by
     rw [← List.map_take, List.take_range, Nat.min_eq_left (by unfold Ref.nLayers; omega)]
@@ -372,8 +372,21 @@ theorem slice_bodies (lay : Nat) (hlay : lay < 5) (y len : Nat)
 /-- A layer read at the signature offsets. -/
 def sigLayerOf (sig : List Byte) (lay : Layer) : LayerSignature lay :=
   ⟨Ref.ofList 4 (Ref.sigCounterBytes sig lay.val),
-    fun i => Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + 4 + 16 * i.val) 16),
-    fun l => Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + 4 + (672 + 16 * l.val)) 16)⟩
+    fun i => Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + 16 * i.val) 16),
+    fun l => Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + (672 + 16 * l.val)) 16)⟩
+
+theorem sigLayerOf_counter (sig : List Byte) (lay : Layer) :
+    (sigLayerOf sig lay).counter.toNat =
+      Ref.CounterPack.unpackCounter (Ref.sigCounterTail sig) lay.val := by
+  have hb : Ref.CounterPack.unpackCounter (Ref.sigCounterTail sig) lay.val < 2 ^ 32 := by
+    have h := Ref.CounterPack.unpackCounter_lt (Ref.sigCounterTail sig) lay.val
+      (by simpa [Ref.nLayers, SphincsSecurity.numLayers] using lay.isLt)
+    unfold Ref.CounterPack.radix Ref.CounterPack.counterBits at h
+    omega
+  change (Ref.ofList 4 (Ref.le32 (Ref.CounterPack.unpackCounter
+    (Ref.sigCounterTail sig) lay.val))).toNat = _
+  norm_num at hb
+  simp [Ref.ofList, Ref.leNat_le32, Nat.mod_eq_of_lt hb]
 
 include hsig hvs in
 theorem witLayer_W (lay : Layer) :
@@ -381,8 +394,9 @@ theorem witLayer_W (lay : Layer) :
   have hl := lay.isLt
   simp only [SphincsSecurity.numLayers] at hl
   obtain ⟨t1, t2, t3, t4⟩ := layer_table lay.val hl
+  simp only [Ref.sigBodyBytes] at t2
   have hh := height_eq lay
-  have hB : ((List.range Ref.nLayers).map fun l => Ref.sigLayerBytes l - 4).sum = 3904 := by decide
+  have hB : ((List.range Ref.nLayers).map Ref.sigBodyBytes).sum = 3904 := by decide
   unfold witLayer sigLayerOf
   congr 1
   · -- the counter
@@ -403,22 +417,22 @@ theorem witLayer_W (lay : Layer) :
     have hi := i.isLt
     simp only [SphincsSecurity.numChains] at hi
     unfold Ref.witChain
-    rw [t1, show 2424 + ((List.range lay.val).map fun l => Ref.sigLayerBytes l - 4).sum + 16 * i.val =
-      2424 + (((List.range lay.val).map fun l => Ref.sigLayerBytes l - 4).sum + 16 * i.val) by ring,
+    rw [t1, show 2424 + ((List.range lay.val).map Ref.sigBodyBytes).sum + 16 * i.val =
+      2424 + (((List.range lay.val).map Ref.sigBodyBytes).sum + 16 * i.val) by ring,
       slice_W_T sig hsig v vs segs hvs _ _ (by omega),
       slice_append_left _ _ _ _ (by rw [length_bodies sig hsig _ (by decide), hB]; omega),
-      slice_bodies sig hsig lay.val hl _ _ (by omega)]
+      slice_bodies sig hsig lay.val hl _ _ (by simp only [Ref.sigBodyBytes, hh]; omega)]
   · funext l
     congr 1
     have hlt : l.val < Ref.height lay.val := by rw [hh]; exact l.isLt
     unfold Ref.witSib
-    rw [t1, show 2424 + ((List.range lay.val).map fun l => Ref.sigLayerBytes l - 4).sum + 672 +
+    rw [t1, show 2424 + ((List.range lay.val).map Ref.sigBodyBytes).sum + 672 +
         16 * l.val =
-      2424 + (((List.range lay.val).map fun l => Ref.sigLayerBytes l - 4).sum + (672 + 16 * l.val)) by
+      2424 + (((List.range lay.val).map Ref.sigBodyBytes).sum + (672 + 16 * l.val)) by
         ring,
       slice_W_T sig hsig v vs segs hvs _ _ (by omega),
       slice_append_left _ _ _ _ (by rw [length_bodies sig hsig _ (by decide), hB]; omega),
-      slice_bodies sig hsig lay.val hl _ _ (by omega)]
+      slice_bodies sig hsig lay.val hl _ _ (by simp only [Ref.sigBodyBytes, hh]; omega)]
 
 
 /-! ### The stream region -/
@@ -539,36 +553,39 @@ end streamFacts
 
 
 include hsig in
-theorem layerBytes_of (S : Signature) (lay : Layer) (h : S.layers lay = sigLayerOf sig lay) :
-    layerBytes S lay = Ref.slice sig (Ref.sigLayerOff lay.val) (Ref.sigLayerBytes lay.val) := by
+theorem layerBodyBytes_of (S : Signature) (lay : Layer) (h : S.layers lay = sigLayerOf sig lay) :
+    layerBodyBytes S lay = Ref.slice sig (Ref.sigLayerOff lay.val) (Ref.sigBodyBytes lay.val) := by
   have hl := lay.isLt
   simp only [SphincsSecurity.numLayers] at hl
-  obtain ⟨-, -, t3, -⟩ := layer_table lay.val hl
+  obtain ⟨-, -, _, -⟩ := layer_table lay.val hl
   have hb := layer_bound lay.val hl
+  simp only [Ref.sigBodyBytes] at hb
   have hh := height_eq lay
-  unfold layerBytes
+  unfold layerBodyBytes
   rw [h]
   simp only [sigLayerOf]
-  rw [Ref.toList_ofList 4 _ (length_sigCounterBytes sig hsig _ hl)]
   have ec : (List.ofFn fun i : Fin SphincsSecurity.numChains =>
-      dv (Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + 4 + 16 * i.val) 16))).flatten =
-      Ref.slice sig (Ref.sigLayerOff lay.val + 4) (16 * 42) := by
+      dv (Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + 16 * i.val) 16))).flatten =
+      Ref.slice sig (Ref.sigLayerOff lay.val) (16 * 42) := by
     rw [← flatten_ofFn_slices]
     congr 1
     exact List.ofFn_inj.mpr (funext fun i => dv_ofList_slice _ _ (by
       have := i.isLt; simp only [SphincsSecurity.numChains] at this; rw [hsig]; omega))
   have ep : (List.ofFn fun l : Fin (SphincsSecurity.layerHeight lay) =>
-      dv (Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + 4 + (672 + 16 * l.val)) 16))).flatten =
-      Ref.slice sig (Ref.sigLayerOff lay.val + 4 + 672) (16 * SphincsSecurity.layerHeight lay) := by
+      dv (Ref.ofList 16 (Ref.slice sig (Ref.sigLayerOff lay.val + (672 + 16 * l.val)) 16))).flatten =
+      Ref.slice sig (Ref.sigLayerOff lay.val + 672) (16 * SphincsSecurity.layerHeight lay) := by
     rw [← flatten_ofFn_slices]
     congr 1
     refine List.ofFn_inj.mpr (funext fun l => ?_)
     have := l.isLt
     rw [dv_ofList_slice _ _ (by rw [hsig]; omega)]
     congr 1; ring
-  rw [ec, ep, Ref.sigCounterBytes, List.append_assoc, ← slice_split, ← slice_split]
+  rw [ec, ep, ← slice_split]
   congr 1
-  rw [t3, hh]; ring
+  unfold Ref.sigBodyBytes Ref.sigLayerBytes
+  rw [hh]
+  simp only [Ref.nChains] at *
+  omega
 
 end layout
 
@@ -590,15 +607,20 @@ theorem leavesOf_leavesN (N : Nat) : Ref.leavesOf N = List.ofFn fun r => (leaves
   rw [map_range_eq_ofFn]
   rfl
 
-/-- What a successful `expandOf` knows: the admissible leaves, the schedule, the zero slots. -/
+/-- What a successful `expandOf` knows: a canonical tail, admissible leaves,
+the schedule, and the zero slots. -/
 theorem expandOf_some (sig : List Byte) (N : Nat) (wl : List Byte)
     (h : Ref.expandOf sig N = some wl) :
     let vs := Ref.sortLeaves (Ref.leavesOf N)
-    (Ref.leavesOf N).Nodup ∧ Ref.octopusSize vs ≤ 118 ∧
+    Ref.CounterPack.canonicalTail (Ref.sigCounterTail sig) = true ∧
+      (Ref.leavesOf N).Nodup ∧ Ref.octopusSize vs ≤ 118 ∧
       (∀ i, (Ref.schedule vs).2.length ≤ i → i < 118 → Ref.sigAuth sig i = Ref.zeros 16) ∧
       wl = Ref.witnessList sig (Ref.leavesOf N) vs (Ref.schedule vs).1 := by
   unfold Ref.expandOf at h
   dsimp only at h
+  split at h
+  · cases h
+  next htail =>
   split at h
   · cases h
   next hnd =>
@@ -609,7 +631,8 @@ theorem expandOf_some (sig : List Byte) (N : Nat) (wl : List Byte)
   · cases h
   next hz =>
   cases h
-  refine ⟨by simpa using hnd, by unfold Ref.porsM at hoct; omega, ?_, rfl⟩
+  refine ⟨by simpa using htail, by simpa using hnd,
+    by unfold Ref.porsM at hoct; omega, ?_, rfl⟩
   intro i hi1 hi2
   have hz' : (List.range' (Ref.schedule (Ref.sortLeaves (Ref.leavesOf N))).2.length
       (Ref.porsM - (Ref.schedule (Ref.sortLeaves (Ref.leavesOf N))).2.length)).all
@@ -666,9 +689,9 @@ theorem sigAuth_eq (sig : List Byte) (i : Nat) : Ref.sigAuth sig i = Ref.slice s
 
 /-- **R2 on byte lists**: a successful expansion decodes to a signature whose compact form is the
 input. -/
-theorem compressList_expandOf (sig : List Byte) (hsig : sig.length = 6068) (N : Nat) (wl : List Byte)
+theorem compressList_expandOf (sig : List Byte) (hsig : sig.length = 6062) (N : Nat) (wl : List Byte)
     (h : Ref.expandOf sig N = some wl) : compressList (witSig wl) = sig := by
-  obtain ⟨hnd, hoct, hz, hwl⟩ := expandOf_some sig N wl h
+  obtain ⟨hcanon, hnd, hoct, hz, hwl⟩ := expandOf_some sig N wl h
   obtain ⟨-, -, hsch, hl29, -, hn118, hsum, hb⟩ := sched_facts N hnd hoct
   set sched := SphincsSecurity.Concrete.schedule (SphincsSecurity.Concrete.sortedLeaves (leavesN N))
   set v := Ref.leavesOf N
@@ -726,29 +749,48 @@ theorem compressList_expandOf (sig : List Byte) (hsig : sig.length = 6068) (N : 
     rw [← e, hB _ (by omega)]
     simp only [Ref.zeros, List.take_replicate, Ref.porsM]
     exact congrArg (List.replicate · 0) (by omega)
-  have p4 : (List.ofFn (layerBytes (witSig (Ref.witnessList sig v vs segs)))).flatten =
-      Ref.slice sig 2144 3924 := by
-    rw [show (3924 : Nat) = ((List.range SphincsSecurity.numLayers).map Ref.sigLayerBytes).sum by decide,
+  have p4 : (List.ofFn (layerBodyBytes (witSig (Ref.witnessList sig v vs segs)))).flatten =
+      Ref.slice sig 2144 3904 := by
+    rw [show (3904 : Nat) = ((List.range SphincsSecurity.numLayers).map Ref.sigBodyBytes).sum by decide,
       ← flatten_ofFn_slices_var]
     refine congrArg List.flatten (List.ofFn_inj.mpr (funext fun lay => ?_))
-    rw [layerBytes_of sig hsig (witSig (Ref.witnessList sig v vs segs)) lay
+    rw [layerBodyBytes_of sig hsig (witSig (Ref.witnessList sig v vs segs)) lay
       (witLayer_W sig hsig v vs segs hvs lay)]
     rfl
-  rw [p1, p2, p3, p4]
-  conv_rhs => rw [← slice_full sig 6068 hsig]
-  rw [show (6068 : Nat) = 16 + (16 * 15 + (16 * 118 + 3924)) from rfl, slice_split, slice_split,
-    slice_split]
-  simp only [List.append_assoc]
+  have p5 : Ref.CounterPack.packTail
+      (List.ofFn fun lay : Layer =>
+        ((witSig (Ref.witnessList sig v vs segs)).layers lay).counter.toNat) =
+      Ref.sigCounterTail sig := by
+    have hdigits : (List.ofFn fun lay : Layer =>
+        ((witSig (Ref.witnessList sig v vs segs)).layers lay).counter.toNat) =
+        Ref.CounterPack.unpackTail (Ref.sigCounterTail sig) := by
+      apply List.ext_getElem
+      · simp [Ref.CounterPack.length_unpackTail, Ref.nLayers, SphincsSecurity.numLayers, Layer]
+      · intro i h1 h2
+        rw [List.getElem_ofFn]
+        change (witLayer (Ref.witnessList sig v vs segs) (⟨i, by
+          simpa [Layer, SphincsSecurity.numLayers] using h1⟩ : Layer)).counter.toNat = _
+        rw [witLayer_W sig hsig v vs segs hvs, sigLayerOf_counter]
+        unfold Ref.CounterPack.unpackCounter
+        simp only [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem h2, Option.getD_some]
+    rw [hdigits]
+    exact Ref.canonicalTail_roundtrip _ hcanon
+  rw [p1, p2, p3, p4, p5]
+  conv_rhs => rw [← slice_full sig 6062 hsig]
+  rw [show (6062 : Nat) = 16 + (16 * 15 + (16 * 118 + (3904 + 14))) from rfl,
+    slice_split, slice_split, slice_split, slice_split]
+  simp only [Ref.sigCounterTail, Ref.CounterPack.tailOffset_eq, Ref.CounterPack.tailBytes,
+    List.append_assoc]
 
 /-- **R2 (bytes)**: a successful reference expansion decodes to a signature compressing to `σ`. -/
-theorem expandOf_compress (σ : Bytes 6068) (N : Nat) (wl : List Byte)
+theorem expandOf_compress (σ : Bytes 6062) (N : Nat) (wl : List Byte)
     (h : Ref.expandOf (Ref.toList σ) N = some wl) : compress (witSig wl) = σ := by
   unfold compress
   rw [compressList_expandOf (Ref.toList σ) (Ref.length_toList σ) N wl h, Ref.ofList_toList]
 
 /-- **R2**: every successful run of the abstract expansion decodes to a signature compressing to
 `σ`. -/
-theorem aExpand_compress (m : Message) (pk : SphincsSecurity.PublicKey) (σ : Bytes 6068)
+theorem aExpand_compress (m : Message) (pk : SphincsSecurity.PublicKey) (σ : Bytes 6062)
     (w : Bytes 6348) (h : some w ∈ support (aExpand m pk σ)) : compress (witDec w) = σ := by
   unfold aExpand at h
   simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at h
@@ -828,30 +870,52 @@ theorem length_authPart (S : Signature) :
 
 theorem slice_compress_rho (S : Signature) : Ref.slice (compressList S) 0 16 = dv S.randomness := by
   unfold compressList
-  rw [List.append_assoc, List.append_assoc, slice_append_left _ _ _ _ (by simp),
+  simp only [List.append_assoc]
+  rw [slice_append_left _ _ _ _ (by simp),
     slice_full _ _ (length_dv _)]
 
 theorem slice_compress_secret (S : Signature) (s : Nat) (hs : s < 15) :
     Ref.slice (compressList S) (16 + 16 * s) 16 = dv (S.fts.secrets ⟨s, hs⟩) := by
   unfold compressList
-  rw [slice_append_left _ _ _ _ (by
-      simp only [List.length_append, length_dv, length_secretsPart, length_authPart]; omega),
-    slice_append_left _ _ _ _ (by
-      simp only [List.length_append, length_dv, length_secretsPart]; omega),
-    slice_append_right _ _ _ (16 * s) _ (by simp),
+  simp only [List.append_assoc]
+  rw [slice_append_right _ _ _ (16 * s) _ (by simp only [length_dv]),
+    slice_append_left _ _ _ _ (by rw [length_secretsPart]; omega),
     slice_flatten_ofFn (fun s => dv (S.fts.secrets s)) 16 ⟨s, hs⟩ 0 16 (16 * s)
       (fun _ _ => length_dv _) (by simp) (by ring),
     slice_full _ _ (length_dv _)]
+
+theorem sigCounterTail_compress (S : Signature) :
+    Ref.sigCounterTail (compressList S) =
+      Ref.CounterPack.packTail (List.ofFn fun lay : Layer => (S.layers lay).counter.toNat) := by
+  let pfx : List Byte := dv S.randomness ++
+    (List.ofFn fun s => dv (S.fts.secrets s)).flatten ++
+    (((authNodes S).map dv).flatten ++ Ref.zeros (16 * Ref.porsM)).take (16 * Ref.porsM) ++
+    (List.ofFn (layerBodyBytes S)).flatten
+  have hcomp : compressList S = pfx ++ Ref.CounterPack.packTail
+      (List.ofFn fun lay : Layer => (S.layers lay).counter.toNat) := by
+    simp only [compressList, pfx, List.append_assoc]
+  have hp : pfx.length = 6048 := by
+    have h := length_compressList S
+    rw [hcomp] at h
+    simp only [List.length_append, Ref.CounterPack.length_packTail,
+      Ref.CounterPack.tailBytes] at h
+    omega
+  unfold Ref.sigCounterTail
+  rw [Ref.CounterPack.tailOffset_eq]
+  rw [hcomp]
+  rw [slice_append_right _ _ _ 0 _ (by simp [hp]),
+    slice_full _ _ (by simpa [Ref.CounterPack.tailBytes] using
+      Ref.CounterPack.length_packTail (List.ofFn fun lay : Layer => (S.layers lay).counter.toNat))]
 
 theorem sigAuth_compress (S : Signature) (hS : (authNodes S).length ≤ 118) (k : Nat) (hk : k < 118) :
     Ref.sigAuth (compressList S) k =
       if k < (authNodes S).length then dv ((authNodes S).getD k 0) else Ref.zeros 16 := by
   rw [sigAuth_eq]
   unfold compressList
-  rw [slice_append_left _ _ _ _ (by
-      simp only [List.length_append, length_dv, length_secretsPart, length_authPart]; omega),
-    slice_append_right _ _ _ (16 * k) _ (by
-      simp only [List.length_append, length_dv, length_secretsPart]),
+  simp only [List.append_assoc]
+  rw [slice_append_right _ _ _ (240 + 16 * k) _ (by simp only [length_dv]; omega),
+    slice_append_right _ _ _ (16 * k) _ (by rw [length_secretsPart]),
+    slice_append_left _ _ _ _ (by rw [length_authPart]; omega),
     slice_take _ _ _ _ (by unfold Ref.porsM; omega)]
   have hl := length_flatten_dv (authNodes S)
   split
@@ -865,29 +929,49 @@ theorem sigAuth_compress (S : Signature) (hS : (authNodes S).length ≤ 118) (k 
     unfold Ref.porsM; omega
 
 theorem length_layersPart_take (S : Signature) (lay : Nat) (hlay : lay ≤ 5) :
-    ((List.ofFn (layerBytes S)).take lay).flatten.length =
-      ((List.range lay).map Ref.sigLayerBytes).sum := by
+    ((List.ofFn (layerBodyBytes S)).take lay).flatten.length =
+      ((List.range lay).map Ref.sigBodyBytes).sum := by
   rw [List.length_flatten, List.map_take, List.map_ofFn]
-  have e : (List.length ∘ layerBytes S) = fun l : Layer => Ref.sigLayerBytes l.val :=
-    funext fun l => length_layerBytes S l
-  rw [e, ← map_range_eq_ofFn (n := SphincsSecurity.numLayers) Ref.sigLayerBytes, ← List.map_take,
+  have e : (List.length ∘ layerBodyBytes S) = fun l : Layer => Ref.sigBodyBytes l.val :=
+    funext fun l => length_layerBodyBytes S l
+  rw [e, ← map_range_eq_ofFn (n := SphincsSecurity.numLayers) Ref.sigBodyBytes, ← List.map_take,
     List.take_range, Nat.min_eq_left (by simp [SphincsSecurity.numLayers]; omega)]
 
 theorem slice_compress_layer (S : Signature) (lay : Layer) (y len : Nat)
-    (h : y + len ≤ Ref.sigLayerBytes lay.val) :
-    Ref.slice (compressList S) (Ref.sigLayerOff lay.val + y) len = Ref.slice (layerBytes S lay) y len := by
+    (h : y + len ≤ Ref.sigBodyBytes lay.val) :
+    Ref.slice (compressList S) (Ref.sigLayerOff lay.val + y) len =
+      Ref.slice (layerBodyBytes S lay) y len := by
   have hl := lay.isLt
   simp only [SphincsSecurity.numLayers] at hl
+  have hBodies : ((List.ofFn (layerBodyBytes S)).flatten).length = 3904 := by
+    rw [List.length_flatten, List.map_ofFn]
+    simp only [Function.comp_def, length_layerBodyBytes, List.sum_ofFn]
+    decide
+  have hWithin : ((List.range lay.val).map Ref.sigBodyBytes).sum + y + len ≤ 3904 := by
+    have ht := (layer_table lay.val hl).2.1
+    omega
+  have hoff : Ref.sigLayerOff lay.val + y =
+      16 + (240 + (1888 + (((List.range lay.val).map Ref.sigBodyBytes).sum + y))) := by
+    unfold Ref.sigLayerOff Ref.headBytes Ref.porsK Ref.porsM
+    omega
   unfold compressList
-  rw [slice_append_right _ _ _ (((List.ofFn (layerBytes S)).take lay.val).flatten.length + y) _ (by
-      simp only [List.length_append, length_dv, length_secretsPart, length_authPart]
-      rw [length_layersPart_take S lay.val (by omega)]
-      unfold Ref.sigLayerOff Ref.headBytes Ref.porsK Ref.porsM; omega),
+  simp only [List.append_assoc]
+  rw [hoff,
+    slice_append_right _ _ _ (240 + (1888 + (((List.range lay.val).map Ref.sigBodyBytes).sum + y))) _ (by
+      simp only [length_dv]),
+    slice_append_right _ _ _ (1888 + (((List.range lay.val).map Ref.sigBodyBytes).sum + y)) _ (by
+      rw [length_secretsPart]),
+    slice_append_right _ _ _ (((List.range lay.val).map Ref.sigBodyBytes).sum + y) _ (by
+      rw [length_authPart]),
+    slice_append_left _ _ _ _ (by
+      rw [hBodies]; exact hWithin),
+    ← length_layersPart_take S lay.val (by omega),
     slice_flatten_take _ _ _ _ (by rw [List.length_ofFn]; exact lay.isLt) (by
-      rw [getD_ofFn, dif_pos lay.isLt, length_layerBytes]; exact h)]
+      rw [getD_ofFn, dif_pos lay.isLt, length_layerBodyBytes]; exact h)]
   rw [getD_ofFn, dif_pos lay.isLt]
 
-theorem sigLayerOf_compress (S : Signature) (lay : Layer) :
+theorem sigLayerOf_compress (S : Signature)
+    (hcounter : ∀ lay, (S.layers lay).counter.toNat < Ref.CounterPack.radix) (lay : Layer) :
     sigLayerOf (compressList S) lay = S.layers lay := by
   have hl := lay.isLt
   simp only [SphincsSecurity.numLayers] at hl
@@ -897,33 +981,42 @@ theorem sigLayerOf_compress (S : Signature) (lay : Layer) :
     (S.layers lay).path
   rw [LayerSignature.mk.injEq]
   refine ⟨?_, funext fun i => ?_, funext fun l => ?_⟩
-  · unfold Ref.sigCounterBytes
-    rw [show Ref.sigLayerOff lay.val = Ref.sigLayerOff lay.val + 0 from rfl,
-      slice_compress_layer S lay 0 4 (by omega)]
-    unfold layerBytes
-    rw [List.append_assoc, slice_append_left _ _ _ _ (by simp [Ref.length_toList]),
-      slice_full _ _ (Ref.length_toList _), Ref.ofList_toList]
+  · have hdigits : Ref.CounterPack.unpackTail
+        (Ref.sigCounterTail (compressList S)) =
+        List.ofFn (fun j : Layer => (S.layers j).counter.toNat) := by
+      rw [sigCounterTail_compress]
+      apply Ref.unpackTail_packTail
+      · simp [Ref.nLayers, SphincsSecurity.numLayers, Layer]
+      · intro c hc
+        obtain ⟨j, rfl⟩ := List.mem_ofFn.mp hc
+        exact hcounter j
+    have hc : Ref.CounterPack.unpackCounter (Ref.sigCounterTail (compressList S)) lay.val =
+        (S.layers lay).counter.toNat := by
+      unfold Ref.CounterPack.unpackCounter
+      rw [hdigits, getD_ofFn, dif_pos lay.isLt]
+    change Ref.ofList 4 (Ref.sigCounterBytes (compressList S) lay.val) =
+      (S.layers lay).counter
+    rw [Ref.sigCounterBytes, hc]
+    change BitVec.ofNat 32 (Ref.leNat (Ref.le32 (S.layers lay).counter.toNat)) =
+      (S.layers lay).counter
+    rw [Ref.leNat_le32, Nat.mod_eq_of_lt (by
+      simpa [SphincsSecurity.counterBits] using (S.layers lay).counter.isLt)]
+    rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]
   · have hi := i.isLt
     simp only [SphincsSecurity.numChains] at hi
-    rw [show Ref.sigLayerOff lay.val + 4 + 16 * i.val = Ref.sigLayerOff lay.val + (4 + 16 * i.val) by ring,
-      slice_compress_layer S lay _ 16 (by omega)]
-    unfold layerBytes
+    rw [slice_compress_layer S lay _ 16 (by simp only [Ref.sigBodyBytes, hh]; omega)]
+    unfold layerBodyBytes
     rw [slice_append_left _ _ _ _ (by
-        simp only [List.length_append, Ref.length_toList]
-        rw [length_flatten_ofFn _ 16 (fun _ => length_dv _)]; simp [SphincsSecurity.numChains]; omega),
-      slice_append_right _ _ _ (16 * i.val) _ (by simp [Ref.length_toList]),
+        rw [length_flatten_ofFn _ 16 (fun _ => length_dv _)];
+        simp [SphincsSecurity.numChains]; omega),
       slice_flatten_ofFn (fun i => dv ((S.layers lay).chainValues i)) 16 i 0 16 (16 * i.val)
         (fun _ _ => length_dv _) (by simp) (by ring),
       slice_full _ _ (length_dv _)]
     exact Ref.ofList_toList _
   · have hlt : l.val < Ref.height lay.val := by rw [hh]; exact l.isLt
-    rw [show Ref.sigLayerOff lay.val + 4 + (672 + 16 * l.val) =
-        Ref.sigLayerOff lay.val + (676 + 16 * l.val) by ring,
-      slice_compress_layer S lay _ 16 (by omega)]
-    unfold layerBytes
-    have hc : (Ref.toList (n := 4) (S.layers lay).counter ++
-        (List.ofFn fun i => dv ((S.layers lay).chainValues i)).flatten).length = 676 := by
-      simp only [List.length_append, Ref.length_toList]
+    rw [slice_compress_layer S lay _ 16 (by simp only [Ref.sigBodyBytes, hh]; omega)]
+    unfold layerBodyBytes
+    have hc : (List.ofFn fun i => dv ((S.layers lay).chainValues i)).flatten.length = 672 := by
       rw [length_flatten_ofFn _ 16 (fun _ => length_dv _)]; rfl
     rw [slice_append_right _ _ _ (16 * l.val) _ (by rw [hc]),
       slice_flatten_ofFn (fun j => dv ((S.layers lay).path j)) 16 l 0 16 (16 * l.val)
@@ -931,7 +1024,9 @@ theorem sigLayerOf_compress (S : Signature) (lay : Layer) :
       slice_full _ _ (length_dv _)]
     exact Ref.ofList_toList _
 
-theorem expandOf_eq_some (sig : List Byte) (N : Nat) (hnd : (Ref.leavesOf N).Nodup)
+theorem expandOf_eq_some (sig : List Byte) (N : Nat)
+    (hcanon : Ref.CounterPack.canonicalTail (Ref.sigCounterTail sig) = true)
+    (hnd : (Ref.leavesOf N).Nodup)
     (hoct : Ref.octopusSize (Ref.sortLeaves (Ref.leavesOf N)) ≤ 118)
     (hz : ∀ i, (Ref.schedule (Ref.sortLeaves (Ref.leavesOf N))).2.length ≤ i → i < 118 →
       Ref.sigAuth sig i = Ref.zeros 16) :
@@ -939,6 +1034,8 @@ theorem expandOf_eq_some (sig : List Byte) (N : Nat) (hnd : (Ref.leavesOf N).Nod
       (Ref.schedule (Ref.sortLeaves (Ref.leavesOf N))).1) := by
   unfold Ref.expandOf
   dsimp only
+  split
+  · next h => simp [hcanon] at h
   split
   · next h => simp [hnd] at h
   split
@@ -1032,7 +1129,8 @@ theorem expandOf_honest (leaves : IndexGroup → FtsLeaf)
     (hadm : SphincsSecurity.Concrete.AdmissibleLeaves leaves) (N : Nat)
     (hN : ∀ r : IndexGroup, Ref.leafOf N r.val = (leaves r).val) (rho : Digest)
     (secret : FtsLeaf → Digest) (node : Nat → Nat → Digest)
-    (layers : (lay : Layer) → LayerSignature lay) :
+    (layers : (lay : Layer) → LayerSignature lay)
+    (hcounter : ∀ lay, (layers lay).counter.toNat < Ref.CounterPack.radix) :
     ∃ wl, wl.length = 6348 ∧
       Ref.expandOf (compressList ⟨rho, SphincsSecurity.Concrete.honestFts leaves secret node, layers⟩) N
         = some wl ∧
@@ -1052,9 +1150,17 @@ theorem expandOf_honest (leaves : IndexGroup → FtsLeaf)
       ((SphincsSecurity.Concrete.schedule (SphincsSecurity.Concrete.sortedLeaves leaves)).map (·.reads)).flatten.length := by rw [hAN, List.length_map]
   have hcl := length_compressList (honestSig leaves rho secret node layers)
   have hauth := sigAuth_compress (honestSig leaves rho secret node layers) (by rw [hANl]; exact hn118)
+  have hcanon : Ref.CounterPack.canonicalTail
+      (Ref.sigCounterTail (compressList (honestSig leaves rho secret node layers))) = true := by
+    rw [sigCounterTail_compress]
+    apply Ref.canonicalTail_packTail
+    · simp [Ref.nLayers, SphincsSecurity.numLayers, Layer]
+    · intro c hc
+      obtain ⟨lay, rfl⟩ := List.mem_ofFn.mp hc
+      exact hcounter lay
   have hn2 : (Ref.schedule (Ref.sortLeaves (Ref.leavesOf N))).2.length =
       ((SphincsSecurity.Concrete.schedule (SphincsSecurity.Concrete.sortedLeaves leaves)).map (·.reads)).flatten.length := by rw [hsch]
-  have hexp := expandOf_eq_some (compressList (honestSig leaves rho secret node layers)) N hnd hoct
+  have hexp := expandOf_eq_some (compressList (honestSig leaves rho secret node layers)) N hcanon hnd hoct
     (fun i hi1 hi2 => by
       rw [hauth i hi2, if_neg (by rw [hANl]; omega)])
   have hvsl : (Ref.sortLeaves (Ref.leavesOf N)).length = 15 := by
@@ -1186,6 +1292,7 @@ theorem expandOf_honest (leaves : IndexGroup → FtsLeaf)
           _ = Ref.ofList 16 (Ref.sigAuth (compressList (honestSig leaves rho secret node layers))
               (asum ((SphincsSecurity.Concrete.schedule (SphincsSecurity.Concrete.sortedLeaves leaves)).map segByte) j.val + i)) := by rw [e1]
           _ = _ := by rw [e2, ofList_dv, e3, e4]
-  · rw [witLayer_W _ hcl _ _ _ hvsl, sigLayerOf_compress]
+  · rw [witLayer_W _ hcl _ _ _ hvsl,
+      sigLayerOf_compress _ (fun lay => hcounter lay)]
 
 end SigGolfCandidate.Equiv
