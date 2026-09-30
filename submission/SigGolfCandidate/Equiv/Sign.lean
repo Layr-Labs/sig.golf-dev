@@ -278,7 +278,7 @@ theorem serialize_eq (rho : Digest) (leaves : IndexGroup → FtsLeaf)
     obtain ⟨h1, h2⟩ := (hseg sg hsg).2 p hpl
     exact levels_node T p h1 h2
   rw [opening_secrets leaves sec T, hY]
-  have hn : (authNodes σ).length ≤ 118 := by
+  have hn : (authNodes σ).length ≤ 120 := by
     rw [hσ, authNodes_honest rho leaves hadm sec T, List.length_map, hoct]
     exact hoct'
   have hA := length_flatten_map_dv (authNodes σ)
@@ -286,8 +286,8 @@ theorem serialize_eq (rho : Digest) (leaves : IndexGroup → FtsLeaf)
     List.length_ofFn, List.length_map, Ref.zeros, Ref.porsK, Ref.porsM, List.append_assoc]
   rw [List.take_append, List.take_of_length_le (by rw [hA]; omega), hA,
     List.take_replicate]
-  have hk : (15 + 118 - (SphincsSecurity.ftsOpenings + (authNodes σ).length)) * 16 =
-      min (16 * 118 - 16 * (authNodes σ).length) (16 * 118) := by
+  have hk : (15 + 120 - (SphincsSecurity.ftsOpenings + (authNodes σ).length)) * 16 =
+      min (16 * 120 - 16 * (authNodes σ).length) (16 * 120) := by
     simp only [SphincsSecurity.ftsOpenings]; omega
   rw [hk]
   simp only [List.append_assoc]

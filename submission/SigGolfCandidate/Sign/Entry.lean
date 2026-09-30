@@ -6,7 +6,7 @@ import SigGolfCandidate.Sign.Pack
 # `sign`: layer-loop entry (296 .. 315) and the signature's layer bytes
 
 * `layer_entry` : the layer constants (`LIM = 2^22`, the SWAR masks, `LAY = 4`, `SIGL` = stage 4).
-* `stage_bytes`, `layers_bytes` : the packed layer region `SIG + 2144 ..` from the stages.
+* `stage_bytes`, `layers_bytes` : the packed layer region `SIG + 2176 ..` from the stages.
 -/
 
 set_option linter.unusedSimpArgs false
@@ -90,12 +90,12 @@ theorem flatMap_range_eq {β γ : Type} (xs : List β) (g : Nat → List γ) (f 
 set_option maxRecDepth 100000 in
 /-- The signature bytes after the pack. -/
 theorem final_bytes (t4 : MachineState) (rho : Val) (fts : List Val) (lays : List LayerSig)
-    (hhead : bytesAt t4 0x3300 2144 = rho ++ fts.flatten)
+    (hhead : bytesAt t4 0x3300 2176 = rho ++ fts.flatten)
     (hll : lays.length = 5) (hst : ∀ l (hl : l < lays.length), StageAt t4 l lays[l]) (t5 : MachineState)
-    (hw5 : t5.readWords (BitVec.ofNat 64 (0x3300 + 2144)) 491 = packTab.map (packDW t4))
+    (hw5 : t5.readWords (BitVec.ofNat 64 (0x3300 + 2176)) 491 = packTab.map (packDW t4))
     (hf5 : Frame t4 t5 (fun x => packD ≤ x ∧ x < packD + 8 * 491)) :
-    bytesAt t5 0x3300 6068 = serialize rho fts lays := by
-  rw [show (6068 : Nat) = 2144 + 3924 from rfl, bytesAt_add, pack_layers t4 t5 hw5]
+    bytesAt t5 0x3300 6100 = serialize rho fts lays := by
+  rw [show (6100 : Nat) = 2176 + 3924 from rfl, bytesAt_add, pack_layers t4 t5 hw5]
   unfold serialize
   congr 1
   · rw [← hhead]

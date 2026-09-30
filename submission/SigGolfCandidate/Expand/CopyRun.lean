@@ -23,9 +23,9 @@ def piF (A : Nat → Nat) (j : Nat) (g : Nat → Byte) : Nat → Byte := fun a =
 
 /-- The copies after the pi loop: secrets, then per layer the counter word and the body. -/
 def copyRest : List (Nat × Nat × Nat) :=
-  [(0x3310, 0x820, 60), (0x3B60, 0x20B8, 1), (0x3B64, 0x1178, 212), (0x3EB4, 0x20BC, 1),
-    (0x3EB8, 0x14C8, 192), (0x41B8, 0x20C0, 1), (0x41BC, 0x17C8, 192), (0x44BC, 0x20C4, 1),
-    (0x44C0, 0x1AC8, 192), (0x47C0, 0x20C8, 1), (0x47C4, 0x1DC8, 188)]
+  [(0x3310, 0x820, 60), (0x3B80, 0x20B8, 1), (0x3B84, 0x1178, 212), (0x3ED4, 0x20BC, 1),
+    (0x3ED8, 0x14C8, 192), (0x41D8, 0x20C0, 1), (0x41DC, 0x17C8, 192), (0x44DC, 0x20C4, 1),
+    (0x44E0, 0x1AC8, 192), (0x47E0, 0x20C8, 1), (0x47E4, 0x1DC8, 188)]
 
 theorem pi_loop (A : Nat → Nat) (g : Nat → Byte) :
     ∀ k (v : MachineState), k ≤ 15 → (v.pc = if k = 0 then pcOf 160 else pcOf 153) →

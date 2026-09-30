@@ -121,13 +121,13 @@ theorem eq_of_le_of_valid {x y : Encoding} (hx : Valid x) (hy : Valid y)
 
 /-- A valid word, used where the proof needs a word before the reference encoding is known. -/
 irreducible_def defaultWord : Encoding :=
-  fun index => if index.val < 25 then ⟨7, by decide⟩ else if index.val = 25 then ⟨5, by decide⟩ else ⟨0, by decide⟩
+  fun index => if index.val < 26 then ⟨7, by decide⟩ else ⟨0, by decide⟩
 
 theorem defaultWord_valid : Valid defaultWord := by
   rw [Valid_def]
-  change (∑ index : ChainIndex, (defaultWord index).val) = 180
+  change (∑ index : ChainIndex, (defaultWord index).val) = 182
   simp only [defaultWord_def]
-  change (∑ index : Fin 42, if index.val < 25 then (7 : Nat) else if index.val = 25 then 5 else 0) = 180
+  change (∑ index : Fin 42, if index.val < 26 then (7 : Nat) else 0) = 182
   simp only [Fin.sum_univ_succ, Fin.sum_univ_zero]
   norm_num
 
