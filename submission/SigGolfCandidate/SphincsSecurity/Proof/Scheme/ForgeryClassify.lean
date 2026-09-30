@@ -21,9 +21,13 @@ def FullyHonestOpening (f : QueryImpl HashSpec Id) (cache : QueryCache HashSpec)
       ∧ CachedRun cache f (otsLeafAttempt secretKey.parameter lay (treeIndexAt index lay)
         (leafIndexAt index lay) (evalWithAnswerFn f (layerMessage secretKey index lay))
         (signature.counter lay) (signature.chainValue lay)))
-    ∧ signature.fts = evalWithAnswerFn f (ftsOpen secretKey.parameter index leaves (secretKey.ftsSecret index))
+    ∧ (∀ tree,
+      signature.ftsSecret tree = secretKey.ftsSecret index tree (leaves (ftsIndexOf tree))
+        ∧ ∀ level (hlevel : level < ftsTreeHeight), signature.ftsPath tree ⟨level, hlevel⟩
+          = honestFtsNode f secretKey.parameter index tree (secretKey.ftsSecret index tree) level
+            (Nat.xor ((leaves (ftsIndexOf tree)).val / 2 ^ level) 1))
     ∧ CachedRun cache f
-      (ftsRecover secretKey.parameter index (slotValue leaves) signature.fts)
+      (ftsRecover secretKey.parameter index leaves signature.ftsSecret signature.ftsPath)
 
 theorem exact_bottom_message_eq_fts_key (f : QueryImpl HashSpec Id) (secretKey : SecretKey)
     (signedIndex forgedIndex : Index) (message : Digest)
