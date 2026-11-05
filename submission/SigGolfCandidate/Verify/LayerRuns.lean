@@ -88,8 +88,8 @@ def specBok (lay t : Nat) : Spec :=
 
 def rejK : List (Reg × E) := [(.x5, cw 1), (.x10, cw 1)]
 
-def specRej1 : Spec := ⟨rejK, [], 32, true, 7, [⟨.lt, orE, .c 0, true⟩], none⟩
-def specRej2 : Spec := ⟨rejK, [], 32, true, 27, [⟨.ne, swS, .c KT, true⟩, ⟨.lt, orE, .c 0, false⟩], none⟩
+def specRej1 : Spec := ⟨rejK, [], 138, true, 7, [⟨.lt, orE, .c 0, true⟩], none⟩
+def specRej2 : Spec := ⟨rejK, [], 138, true, 27, [⟨.ne, swS, .c KT, true⟩, ⟨.lt, orE, .c 0, false⟩], none⟩
 
 /-! ## Leaf -/
 
