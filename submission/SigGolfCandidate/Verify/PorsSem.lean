@@ -259,8 +259,8 @@ theorem pleaf_step (P : PCtx) (hP : P.ok) (s0 : MachineState) (s : Nat) (st : Po
       ∃ u k, k ≤ 11 ∧ Steps image m k k u ∧ fetch image u = some (.base .ECALL) ∧
         u.getReg .x5 = 1 ∧ u.getReg .x10 = 1) ∧
     (¬ ((s ≠ 0 ∧ ¬ st.prev < leafX P s) ∨ (s = porsK - 1 ∧ ¬ leafX P s < porsT)) →
-      ∃ u, Steps image m (if s = 0 then 10 else if s = 14 then 15 else 11)
-        (if s = 0 then 10 else if s = 14 then 15 else 11) u ∧
+      ∃ u, Steps image m (if s = 0 then 10 else if s = 14 then 14 else 11)
+        (if s = 0 then 10 else if s = 14 then 14 else 11) u ∧
         DispIn P s0 s (leafX P s) s st.ptr (porsT ||| leafX P s) st.folds
           (.leaf (leafX P s) (witSecret P.wl s)) st.node st.stack u) := by
   have hs : s < 15 := h.bnd.1
@@ -294,7 +294,7 @@ theorem pleaf_step (P : PCtx) (hP : P.ok) (s0 : MachineState) (s : Nat) (st : Po
       obtain ⟨u, hu⟩ := pspec_run c2 m h.pc hK ((hbr false true).mpr ⟨fun hs0 => by
         rw [eq_comm, decide_eq_false_iff_not, not_not]; by_contra hc; exact hprev ⟨hs0, hc⟩,
         fun _ => by simp [h2.2]⟩) hob
-      exact ⟨u, _, le_refl _, hu.steps, hu.ecall rfl,
+      exact ⟨u, 10, by decide, hu.steps, hu.ecall rfl,
         hu.regs (.x5, cw 1) (by simp [rejSpec]), hu.regs (.x10, cw 1) (by simp [rejSpec])⟩
   · intro hacc
     have hbr' : ∀ b ∈ (leafSpec s).brs, b.holds m := by

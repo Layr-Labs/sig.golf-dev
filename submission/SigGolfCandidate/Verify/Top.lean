@@ -8,7 +8,7 @@ namespace SigGolfCandidate.Verify
 open SigGolfCandidate.Legacy SigGolfCandidate.Legacy.Riscv RiscvZkvm.Rv64 SigGolfCandidate.Rv SigGolfCandidate.Ref OracleComp
 
 /-- The accepting-run cycle bound, including the seven-cycle startup saving. -/
-def cycleBound : Nat := 11685
+def cycleBound : Nat := 11684
 
 /-- A cycle bound of every run (`256` per segment instead of `16` / `18 + 17 a`). -/
 def cycleBoundAll : Nat := 16834
@@ -90,10 +90,10 @@ theorem pors_good (P : PCtx) (hP : P.ok) (s0 : MachineState)
   rw [l0, f0] at hg
   exact hg.mono (le_refl _) (le_refl _) (fun _ => ⟨trivial, le_refl _⟩)
 
-theorem lrest_0 : lrest 0 = 158 := by decide
+theorem lrest_0 : lrest 0 = 157 := by decide
 
-theorem cost_vals : leafCost 0 + Cseg 0 0 = 7754 + layC ∧ leafCost 0 + Aseg 0 0 0 = 2858 + layC ∧
-    leafCost 0 + Nseg 0 0 = 7754 + layC + layN := by
+theorem cost_vals : leafCost 0 + Cseg 0 0 = 7753 + layC ∧ leafCost 0 + Aseg 0 0 0 = 2857 + layC ∧
+    leafCost 0 + Nseg 0 0 = 7753 + layC + layN := by
   have h0 : leafCost 0 = 10 := rfl
   refine ⟨?_, ?_, ?_⟩ <;> simp only [Cseg, Aseg, Nseg, segR, lrest_0, h0] <;> omega
 
