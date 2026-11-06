@@ -4,8 +4,8 @@ import SigGolfCandidate.Transfer.Final
 /-!
 # sig.golf solution: SPHINCS+ with PORS+FP (forced-pruning single-tree few-time signature)
 
-`S = 6061` bytes, `W = 6348` bytes, `K = 131072` bytes (cache), `C = 11711` cycles (verify bound
-`11686` plus the witness charge `⌈6348 / 256⌉ = 25`). Layout (bytes): message 64, secret key 128,
+`S = 6061` bytes, `W = 6348` bytes, `K = 131072` bytes (cache), `C = 11710` cycles (verify bound
+`11685` plus the witness charge `⌈6348 / 256⌉ = 25`). Layout (bytes): message 64, secret key 128,
 public key 160, cache 19200, signature 13056, witness 2048.
 
 The verifier reuses its initialized registers and existing base address, and falls through
@@ -36,7 +36,7 @@ theorem layout_offsets : submission.layout =
   { message := 64, secretKey := 128, publicKey := 160,
     cache := 19200, signature := 13056, witness := 2048 } := rfl
 
-theorem certificate : SigGolf.Certificate submission 11711 :=
+theorem certificate : SigGolf.Certificate submission 11710 :=
   SigGolfCandidate.certificateNew
 
 end SigGolf.Challenge

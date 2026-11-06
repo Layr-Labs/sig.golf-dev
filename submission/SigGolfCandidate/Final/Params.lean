@@ -9,7 +9,7 @@ bound on verify's RISC-V cycles (accepting runs) and the claimed
 namespace SigGolfCandidate.Final
 
 /-- Proved upper bound on the cycles of accepting verify runs. -/
-def verifyCycleBound : Nat := 11686
+def verifyCycleBound : Nat := 11685
 
 /-- The witness charge `⌈6348 / 256⌉`. -/
 def witnessCharge : Nat := 25
